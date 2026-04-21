@@ -1,4 +1,503 @@
-<html>
-<a href=https://www.canva.com/design/DAHEUb8J56Y/2NIQDvydE_YFnSZzurY2WQ/view?utm_content=DAHEUb8J56Y&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h9a68d0512b#14>Presentación Informe Felicidad 2026</a>
-<a href=http://informes.myhappyforce.com/iv-informe-felicidad-2026.html>Informe completo felicidad en el trabajo 2026</a>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informes Happyforce</title>
+<meta name="description" content="Publicaciones e informes de Happyforce sobre felicidad, compromiso y liderazgo en el trabajo.">
+<link rel="icon" href="https://myhappyforce.com/wp-content/uploads/2019/06/cropped-favicon-32x32.png" sizes="32x32">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #111827;
+  --ink-secondary: #374151;
+  --ink-muted: #6b7280;
+  --ink-light: #9ca3af;
+  --white: #ffffff;
+  --bg: #ffffff;
+  --bg-alt: #f9fafb;
+  --bg-dark: #0f1923;
+  --accent: #f26522;
+  --accent-hover: #e05a1a;
+  --accent-soft: #fff4ed;
+  --teal: #10b981;
+  --teal-soft: #ecfdf5;
+  --purple: #8b5cf6;
+  --purple-soft: #f5f3ff;
+  --border: #e5e7eb;
+  --border-light: #f3f4f6;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.05);
+  --shadow: 0 4px 14px -2px rgba(0,0,0,.08), 0 2px 4px -2px rgba(0,0,0,.04);
+  --shadow-lg: 0 20px 40px -12px rgba(0,0,0,.15), 0 8px 16px -8px rgba(0,0,0,.08);
+  --max-w: 1140px;
+  --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--bg-alt);
+  line-height: 1.7;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+img { max-width: 100%; display: block; }
+a { color: var(--accent); text-decoration: none; }
+
+/* ─── NAV ─── */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255,255,255,.97);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.nav-brand img { height: 32px; width: auto; }
+.nav-brand .divider {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+}
+.nav-brand .label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-secondary);
+  letter-spacing: .01em;
+}
+.nav-cta {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color .2s;
+}
+.nav-cta:hover { color: var(--accent); }
+
+/* ─── HERO ─── */
+.hero {
+  padding: 72px 24px 48px;
+  max-width: var(--max-w);
+  margin: 0 auto;
+}
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  margin-bottom: 20px;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+.hero-eyebrow::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.hero h1 {
+  font-size: clamp(32px, 4.6vw, 48px);
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  color: var(--ink);
+  margin-bottom: 18px;
+  max-width: 820px;
+}
+.hero h1 em {
+  font-style: normal;
+  color: var(--accent);
+}
+.hero p {
+  font-size: 18px;
+  color: var(--ink-secondary);
+  max-width: 680px;
+}
+
+/* ─── REPORTS GRID ─── */
+.reports {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 24px 24px 96px;
+}
+.reports-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  padding: 0 4px;
+}
+.reports-head h2 {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--ink-muted);
+}
+.reports-head .count {
+  font-size: 13px;
+  color: var(--ink-light);
+  font-weight: 500;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 24px;
+}
+
+/* ─── REPORT CARD ─── */
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+  position: relative;
+}
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: transparent;
+}
+
+.card-cover {
+  position: relative;
+  padding: 28px 26px 24px;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  color: var(--white);
+}
+.card-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 85% 15%, rgba(255,255,255,.18), transparent 55%),
+              radial-gradient(circle at 15% 95%, rgba(0,0,0,.18), transparent 60%);
+  pointer-events: none;
+}
+
+.card-cover.accent-orange {
+  background: linear-gradient(135deg, #f26522 0%, #d84a0c 100%);
+}
+.card-cover.accent-wine {
+  background: linear-gradient(135deg, #722f37 0%, #4a1d24 100%);
+}
+.card-cover.accent-teal {
+  background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+}
+
+.card-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  z-index: 1;
+  position: relative;
+}
+.badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(255,255,255,.18);
+  color: #fff;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,.25);
+}
+.card-edition {
+  z-index: 1;
+  position: relative;
+  font-family: 'Plus Jakarta Sans', serif;
+  font-size: 52px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  line-height: 1;
+  opacity: .95;
+}
+.card-edition .edition-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  opacity: .7;
+  margin-top: 6px;
+}
+
+.card-body {
+  padding: 22px 26px 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.card-title {
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ink);
+  margin-bottom: 10px;
+  letter-spacing: -.01em;
+}
+.card-desc {
+  font-size: 14.5px;
+  color: var(--ink-secondary);
+  line-height: 1.6;
+  margin-bottom: 18px;
+  flex: 1;
+}
+.card-stats {
+  display: flex;
+  gap: 18px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border-light);
+  margin-bottom: 18px;
+}
+.stat {
+  flex: 1;
+}
+.stat-num {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.stat-label {
+  font-size: 11px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.card-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  transition: background .2s, color .2s, transform .15s;
+}
+.btn-primary {
+  background: var(--ink);
+  color: var(--white);
+}
+.btn-primary:hover {
+  background: var(--accent);
+  transform: translateX(2px);
+}
+.btn-secondary {
+  background: transparent;
+  color: var(--ink-muted);
+  padding: 10px 12px;
+}
+.btn-secondary:hover {
+  color: var(--accent);
+}
+.btn .arrow {
+  transition: transform .2s;
+}
+.btn-primary:hover .arrow { transform: translateX(3px); }
+
+/* ─── FOOTER ─── */
+footer {
+  background: var(--bg-dark);
+  color: var(--ink-light);
+  padding: 40px 24px;
+  margin-top: 40px;
+}
+.footer-inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+.footer-inner img { height: 24px; opacity: .85; }
+.footer-inner a {
+  color: var(--ink-light);
+  transition: color .2s;
+}
+.footer-inner a:hover { color: #fff; }
+
+@media (max-width: 600px) {
+  .hero { padding: 48px 20px 32px; }
+  .reports { padding: 16px 20px 64px; }
+  .nav-brand .label { display: none; }
+  .card-stats { flex-wrap: wrap; gap: 12px 18px; }
+  .stat { flex: 0 0 calc(50% - 12px); }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <a href="https://myhappyforce.com/es/" aria-label="Happyforce">
+        <img src="https://myhappyforce.com/wp-content/uploads/2019/12/logo_happyforce_horizontal-1024x269.png" alt="Happyforce">
+      </a>
+      <span class="divider"></span>
+      <span class="label">Informes &amp; Publicaciones</span>
+    </div>
+    <a class="nav-cta" href="https://myhappyforce.com/es/" target="_blank" rel="noopener">
+      myhappyforce.com
+      <span aria-hidden="true">↗</span>
+    </a>
+  </div>
+</nav>
+
+<section class="hero">
+  <span class="hero-eyebrow">Biblioteca pública</span>
+  <h1>Informes sobre <em>felicidad, compromiso y liderazgo</em> en el trabajo.</h1>
+  <p>Aquí publicamos los estudios, informes sectoriales y análisis que producimos en Happyforce. Datos abiertos, interactivos y en español.</p>
+</section>
+
+<section class="reports">
+  <div class="reports-head">
+    <h2>Publicaciones disponibles</h2>
+    <span class="count">2 informes</span>
+  </div>
+
+  <div class="grid">
+
+    <!-- ─── 2026 GLOBAL ─── -->
+    <article class="card">
+      <div class="card-cover accent-orange">
+        <div class="card-badges">
+          <span class="badge">Global</span>
+          <span class="badge">2026</span>
+        </div>
+        <div class="card-edition">
+          IV
+          <span class="edition-label">Edición · Anual</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3 class="card-title">IV Informe Mundial de Felicidad en el Trabajo 2026</h3>
+        <p class="card-desc">El estudio más completo sobre felicidad, compromiso y liderazgo en el trabajo. Brecha generacional, eNPS, bienestar, factores clave y el papel de la IA.</p>
+        <div class="card-stats">
+          <div class="stat">
+            <div class="stat-num">1.395</div>
+            <div class="stat-label">Personas</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">15+</div>
+            <div class="stat-label">Países</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">20+</div>
+            <div class="stat-label">Sectores</div>
+          </div>
+        </div>
+        <div class="card-actions">
+          <a class="btn btn-primary" href="iv-informe-felicidad-2026.html">
+            Leer informe
+            <span class="arrow" aria-hidden="true">→</span>
+          </a>
+          <a class="btn btn-secondary" href="https://www.canva.com/design/DAHEUb8J56Y/2NIQDvydE_YFnSZzurY2WQ/view?utm_content=DAHEUb8J56Y&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h9a68d0512b#14" target="_blank" rel="noopener">
+            Ver presentación ↗
+          </a>
+        </div>
+      </div>
+    </article>
+
+    <!-- ─── VINO 2025 ─── -->
+    <article class="card">
+      <div class="card-cover accent-wine">
+        <div class="card-badges">
+          <span class="badge">Sectorial</span>
+          <span class="badge">España 2025</span>
+        </div>
+        <div class="card-edition">
+          I
+          <span class="edition-label">Edición · Pionero</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3 class="card-title">Informe de Felicidad en el Trabajo en el Sector del Vino</h3>
+        <p class="card-desc">Por primera vez, el sector del vino español mide cómo se sienten quienes cada día hacen posible el vino. 8 dimensiones, sumillería, producción y distribución.</p>
+        <div class="card-stats">
+          <div class="stat">
+            <div class="stat-num">826</div>
+            <div class="stat-label">Respuestas</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">427</div>
+            <div class="stat-label">Completadas</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">8</div>
+            <div class="stat-label">Dimensiones</div>
+          </div>
+        </div>
+        <div class="card-actions">
+          <a class="btn btn-primary" href="informe_felicidad_vino.html">
+            Leer informe
+            <span class="arrow" aria-hidden="true">→</span>
+          </a>
+        </div>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <img src="https://myhappyforce.com/wp-content/uploads/2020/01/logo-happyforce-dark-1.png" alt="Happyforce" style="filter:brightness(2)">
+    <span>&copy; Happyforce · <a href="https://myhappyforce.com/es/" target="_blank" rel="noopener">myhappyforce.com</a></span>
+  </div>
+</footer>
+
+</body>
 </html>
