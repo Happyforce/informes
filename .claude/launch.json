@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "static",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [".claude/static-server.mjs"],
+      "port": 4599
+    },
+    {
+      "name": "platform",
+      "cwd": "platform",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 4600,
+      "env": {
+        "NEXT_PUBLIC_SUPABASE_URL": "https://placeholder.supabase.co",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY": "placeholder",
+        "SUPABASE_SERVICE_ROLE_KEY": "placeholder"
+      }
+    }
+  ]
+}
