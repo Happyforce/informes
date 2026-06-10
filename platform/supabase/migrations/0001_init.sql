@@ -6,27 +6,6 @@
 -- end users never touch Storage directly (route handlers mediate).
 -- ============================================================
 
--- ─── Helpers ───────────────────────────────────────────────
-
--- Is the current JWT a Happyforce admin account?
-create or replace function public.is_hf_admin()
-returns boolean
-language sql stable
-as $$
-  select coalesce(auth.jwt() ->> 'email', '') ilike '%@myhappyforce.com'
-$$;
-
--- Client ids the current user belongs to. SECURITY DEFINER so it can
--- read client_members without tripping that table's own RLS.
-create or replace function public.member_client_ids()
-returns setof uuid
-language sql stable security definer set search_path = public
-as $$
-  select client_id
-  from public.client_members
-  where lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
-$$;
-
 -- ─── Tables ────────────────────────────────────────────────
 
 create table public.clients (
@@ -72,6 +51,28 @@ create table public.reports (
   )
 );
 create index reports_client_idx on public.reports (client_id, published_at desc);
+
+-- ─── Helpers ───────────────────────────────────────────────
+-- (after the tables: SQL function bodies are validated at creation time)
+
+-- Is the current JWT a Happyforce admin account?
+create or replace function public.is_hf_admin()
+returns boolean
+language sql stable
+as $$
+  select coalesce(auth.jwt() ->> 'email', '') ilike '%@myhappyforce.com'
+$$;
+
+-- Client ids the current user belongs to. SECURITY DEFINER so it can
+-- read client_members without tripping that table's own RLS.
+create or replace function public.member_client_ids()
+returns setof uuid
+language sql stable security definer set search_path = public
+as $$
+  select client_id
+  from public.client_members
+  where lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+$$;
 
 -- ─── RLS ───────────────────────────────────────────────────
 
