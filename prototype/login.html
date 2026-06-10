@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acceder · Informes Happyforce</title>
+<link rel="icon" href="https://myhappyforce.com/wp-content/uploads/2019/06/cropped-favicon-32x32.png" sizes="32x32">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="demo-banner">
+  PROTOTIPO · El "magic link" está simulado — no se envía email real. Usa uno de los emails de ejemplo.
+</div>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <a href="index.html" aria-label="Happyforce"><img src="https://myhappyforce.com/wp-content/uploads/2019/12/logo_happyforce_horizontal-1024x269.png" alt="Happyforce"></a>
+      <span class="divider"></span>
+      <span class="label">Acceso clientes</span>
+    </div>
+    <a class="nav-cta" href="index.html">← Volver a la biblioteca</a>
+  </div>
+</nav>
+
+<div class="auth-wrap">
+
+  <!-- STEP 1: enter email -->
+  <div class="auth-card" id="step1">
+    <h1>Accede a tu espacio</h1>
+    <p class="sub">Introduce tu email de trabajo y te enviaremos un enlace de acceso. Sin contraseñas.</p>
+    <div id="nomatchWarn"></div>
+    <div class="field">
+      <label for="email">Email</label>
+      <input class="input" id="email" type="email" placeholder="tu.nombre@empresa.com" autocomplete="email">
+    </div>
+    <button class="btn btn-accent btn-block" onclick="sendLink()">Enviar enlace de acceso</button>
+    <p class="hint">
+      <b>Emails de prueba</b> (haz clic para rellenar):<br>
+      Cliente: <code onclick="fill(this)">ana@bodegasaurora.com</code> <code onclick="fill(this)">laura@nordia.com</code><br>
+      Admin Happyforce: <code onclick="fill(this)">alex@myhappyforce.com</code>
+    </p>
+  </div>
+
+  <!-- STEP 2: link sent -->
+  <div class="auth-card" id="step2" style="display:none">
+    <div class="sent-icon">✉️</div>
+    <h1 style="text-align:center">Revisa tu correo</h1>
+    <p class="sub" style="text-align:center">Hemos enviado un enlace de acceso a<br><b id="sentTo" style="color:var(--ink)"></b></p>
+    <button class="btn btn-accent btn-block" onclick="openLink()">Abrir enlace mágico (demo) →</button>
+    <p class="hint" style="text-align:center">En producción este botón es el enlace que llega por email y caduca a los 15 min.</p>
+    <p class="hint" style="text-align:center"><a onclick="back()" style="cursor:pointer">← Usar otro email</a></p>
+  </div>
+
+</div>
+
+<script src="mock.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+if (params.get("nomatch")) {
+  document.getElementById("nomatchWarn").innerHTML =
+    '<div class="hint" style="background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;padding:11px 13px;border-radius:8px;margin-bottom:18px">Ese email no tiene acceso a ningún espacio todavía. Pide a tu contacto de Happyforce que te dé de alta.</div>';
+}
+function fill(el){ document.getElementById("email").value = el.textContent; }
+function back(){ document.getElementById("step2").style.display="none"; document.getElementById("step1").style.display=""; }
+let pending = "";
+function sendLink(){
+  const email = document.getElementById("email").value.trim();
+  if (!email || !email.includes("@")) { hfToast("Introduce un email válido"); return; }
+  pending = email;
+  document.getElementById("sentTo").textContent = email;
+  document.getElementById("step1").style.display="none";
+  document.getElementById("step2").style.display="";
+}
+function openLink(){
+  hfSetSession(pending);
+  location.href = hfDestinationFor(pending);
+}
+</script>
+</body>
+</html>

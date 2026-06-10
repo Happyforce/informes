@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de administración · Informes Happyforce</title>
+<link rel="icon" href="https://myhappyforce.com/wp-content/uploads/2019/06/cropped-favicon-32x32.png" sizes="32x32">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="demo-banner">
+  PROTOTIPO · <b>panel de Customer Advisory</b> — los cambios son simulados (no se guardan al recargar)
+</div>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <a href="index.html" aria-label="Happyforce"><img src="https://myhappyforce.com/wp-content/uploads/2019/12/logo_happyforce_horizontal-1024x269.png" alt="Happyforce"></a>
+      <span class="divider"></span>
+      <span class="label">Administración</span>
+    </div>
+    <div class="nav-right" id="navRight"></div>
+  </div>
+</nav>
+
+<div class="admin">
+  <aside class="admin-side">
+    <div class="side-label">Gestión</div>
+    <div class="side-link active" data-view="clients" onclick="switchView('clients')"><span class="ico">🏢</span> Clientes</div>
+    <div class="side-link" data-view="reports" onclick="switchView('reports')"><span class="ico">📄</span> Informes</div>
+    <div class="side-label">Biblioteca</div>
+    <div class="side-link" onclick="location.href='index.html'"><span class="ico">🌐</span> Ver landing pública</div>
+  </aside>
+
+  <main class="admin-main">
+    <!-- CLIENTS VIEW -->
+    <div id="view-clients">
+      <div class="page-head">
+        <div><h1>Clientes</h1><p>Cada cliente tiene un espacio privado con su propia lista de informes.</p></div>
+        <button class="btn btn-accent" onclick="openClientModal()">+ Nuevo cliente</button>
+      </div>
+      <div class="panel">
+        <table class="data">
+          <thead><tr><th>Cliente</th><th>Miembros con acceso</th><th>Informes</th><th></th></tr></thead>
+          <tbody id="clientsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- REPORTS VIEW -->
+    <div id="view-reports" style="display:none">
+      <div class="page-head">
+        <div><h1>Informes</h1><p>Sube un fichero HTML, asígnalo a un cliente (o márcalo público) y publícalo.</p></div>
+        <button class="btn btn-accent" onclick="openReportModal()">+ Subir informe</button>
+      </div>
+      <div class="panel">
+        <table class="data">
+          <thead><tr><th>Informe</th><th>Destino</th><th>Visibilidad</th><th>Publicado</th><th></th></tr></thead>
+          <tbody id="reportsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ───────── CLIENT MODAL ───────── -->
+<div class="modal-backdrop" id="clientModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2>Nuevo cliente</h2><p>Crea un espacio privado y da de alta a los emails que podrán acceder.</p></div>
+      <button class="close-x" onclick="closeModal('clientModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Nombre del cliente</label><input class="input" id="cName" placeholder="Ej. Bodegas Aurora"></div>
+      <div class="field"><label>Color de marca</label><div class="swatches" id="cSwatches"></div></div>
+      <div class="field">
+        <label>Miembros con acceso (lista de emails)</label>
+        <div style="display:flex;gap:8px">
+          <input class="input" id="cMemberInput" placeholder="nombre@empresa.com" onkeydown="if(event.key==='Enter')addMember()">
+          <button class="btn btn-ghost" onclick="addMember()">Añadir</button>
+        </div>
+        <div id="cMembers" style="margin-top:10px"></div>
+        <p class="hint">Solo estos emails recibirán acceso por magic link. (En v2: conectado a las cuentas admin del dashboard de Happyforce.)</p>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('clientModal')">Cancelar</button>
+      <button class="btn btn-accent" onclick="saveClient()">Crear cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- ───────── REPORT MODAL ───────── -->
+<div class="modal-backdrop" id="reportModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2>Subir informe</h2><p>El fichero HTML se guarda en almacenamiento privado y se sirve solo a quien tenga acceso.</p></div>
+      <button class="close-x" onclick="closeModal('reportModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Fichero del informe</label>
+        <div class="dropzone" id="dropzone" onclick="fakeUpload()">
+          <div class="big">📄</div>
+          <div id="dropText">Arrastra aquí tu fichero <b>.html</b> o haz clic para seleccionar</div>
+        </div>
+      </div>
+      <div class="field"><label>Título</label><input class="input" id="rTitle" placeholder="Ej. Informe de Clima Laboral · Q2 2026"></div>
+      <div class="field"><label>Descripción</label><textarea class="textarea" id="rDesc" placeholder="Resumen breve que verá el cliente en la card."></textarea></div>
+      <div class="field">
+        <label>Visibilidad y destino</label>
+        <select class="select" id="rDest" onchange="toggleDest()"></select>
+        <p class="hint" id="rDestHint"></p>
+      </div>
+      <div class="field"><label>Color de portada</label><div class="swatches" id="rSwatches"></div></div>
+      <div class="field">
+        <label>Etiquetas (separadas por coma)</label>
+        <input class="input" id="rBadges" placeholder="Trimestral, Q2 2026">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('reportModal')">Cancelar</button>
+      <button class="btn btn-accent" onclick="saveReport()">Publicar informe</button>
+    </div>
+  </div>
+</div>
+
+<script src="mock.js"></script>
+<script>
+/* ── Guard: admins only ── */
+const sess = hfGetSession();
+if (!sess) location.href = "login.html";
+if (sess && !sess.isAdmin) {
+  document.body.innerHTML = '<div style="max-width:560px;margin:80px auto;text-align:center;font-family:var(--font);padding:0 20px">'+
+    '<div style="font-size:42px">🔒</div><h1 style="font-size:24px;margin:12px 0">Solo para el equipo de Happyforce</h1>'+
+    '<p style="color:#6b7280;margin-bottom:22px">El panel de administración requiere una cuenta @myhappyforce.com.</p>'+
+    '<a class="btn btn-accent" href="index.html">Volver</a></div>';
+  throw new Error("forbidden");
+}
+document.getElementById("navRight").innerHTML =
+  '<div class="nav-user"><span class="avatar dark">'+sess.email.slice(0,2).toUpperCase()+'</span>'+sess.email+'</div>'+
+  '<a class="nav-cta" onclick="hfLogout()">Salir</a>';
+
+/* working copy of data so the prototype feels live within the session */
+const clients = JSON.parse(JSON.stringify(CLIENTS));
+let pubReports = JSON.parse(JSON.stringify(PUBLIC_REPORTS));
+
+const COVERS = [
+  {cls:"accent-orange", hex:"#f26522"}, {cls:"accent-wine", hex:"#722f37"},
+  {cls:"accent-blue", hex:"#2563eb"}, {cls:"accent-teal", hex:"#10b981"},
+  {cls:"accent-purple", hex:"#8b5cf6"}, {cls:"accent-slate", hex:"#475569"}
+];
+
+/* ── Views ── */
+function switchView(v){
+  document.querySelectorAll(".side-link[data-view]").forEach(el=>el.classList.toggle("active", el.dataset.view===v));
+  document.getElementById("view-clients").style.display = v==="clients"?"":"none";
+  document.getElementById("view-reports").style.display = v==="reports"?"":"none";
+}
+
+function renderClients(){
+  document.getElementById("clientsBody").innerHTML = clients.map(c=>`
+    <tr>
+      <td><div class="client-chip"><span class="client-dot" style="background:${c.color}">${c.initials}</span>
+        <span><span class="cell-strong">${c.name}</span><br><span style="font-size:12px;color:var(--ink-light)">informes.myhappyforce.com/c/${c.slug}</span></span></div></td>
+      <td>${c.members.length} ${c.members.length===1?"persona":"personas"}<br><span style="font-size:12px;color:var(--ink-light)">${c.members.join(", ")}</span></td>
+      <td>${c.reports.length}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" title="Ver espacio" onclick="location.href='space.html?c=${c.slug}'">↗</button>
+      </div></td>
+    </tr>`).join("");
+}
+
+function allReportsFlat(){
+  const rows = [];
+  pubReports.forEach(r=>rows.push({...r, dest:"Público", visibility:"public"}));
+  clients.forEach(c=>c.reports.forEach(r=>rows.push({...r, dest:c.name, destColor:c.color, destInitials:c.initials, visibility:"private"})));
+  return rows.sort((a,b)=> (b.publishedAt||"").localeCompare(a.publishedAt||""));
+}
+function renderReports(){
+  document.getElementById("reportsBody").innerHTML = allReportsFlat().map(r=>`
+    <tr>
+      <td class="cell-strong">${r.title}</td>
+      <td>${r.visibility==="public"
+        ? '<span class="pill muted">🌐 Biblioteca pública</span>'
+        : '<span class="client-chip"><span class="client-dot" style="background:'+r.destColor+'">'+r.destInitials+'</span>'+r.dest+'</span>'}</td>
+      <td>${r.visibility==="public"?'<span class="pill public">Público</span>':'<span class="pill private">Privado</span>'}</td>
+      <td>${r.publishedAt?fmtDate(r.publishedAt):"—"}</td>
+      <td><div class="row-actions"><button class="icon-btn" title="Abrir" onclick="window.open('${r.href}','_blank')">↗</button></div></td>
+    </tr>`).join("");
+}
+
+/* ── Client modal ── */
+let cMembers = [], cCover = COVERS[0];
+function openClientModal(){
+  cMembers = []; cCover = COVERS[0];
+  document.getElementById("cName").value = "";
+  document.getElementById("cSwatches").innerHTML = COVERS.map((c,i)=>`<div class="swatch ${i===0?'sel':''}" style="background:${c.hex}" onclick="pickCover('cSwatches',${i})"></div>`).join("");
+  renderCMembers();
+  openModal("clientModal");
+}
+function pickCover(group, i){
+  const cover = COVERS[i];
+  if (group==="cSwatches") cCover = cover; else rCover = cover;
+  document.querySelectorAll("#"+group+" .swatch").forEach((s,idx)=>s.classList.toggle("sel", idx===i));
+}
+function addMember(){
+  const inp = document.getElementById("cMemberInput");
+  const v = inp.value.trim();
+  if (!v.includes("@")) { hfToast("Email no válido"); return; }
+  cMembers.push(v); inp.value=""; renderCMembers();
+}
+function renderCMembers(){
+  document.getElementById("cMembers").innerHTML = cMembers.length
+    ? cMembers.map((m,i)=>`<div class="member-row"><span class="avatar" style="width:26px;height:26px;font-size:11px">${m.slice(0,2).toUpperCase()}</span>${m}<span class="x" onclick="cMembers.splice(${i},1);renderCMembers()">✕</span></div>`).join("")
+    : '<p class="hint">Aún no has añadido a nadie.</p>';
+}
+function saveClient(){
+  const name = document.getElementById("cName").value.trim();
+  if (!name) { hfToast("Pon un nombre"); return; }
+  const slug = name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
+  clients.push({ id:"c-"+slug, slug, name, color:cCover.hex, cover:cCover.cls,
+    initials:name.split(" ").slice(0,2).map(w=>w[0]).join("").toUpperCase(), members:cMembers, reports:[] });
+  closeModal("clientModal"); renderClients();
+  hfToast("Cliente «"+name+"» creado");
+}
+
+/* ── Report modal ── */
+let rCover = COVERS[0], rFile = null;
+function openReportModal(){
+  rCover = COVERS[0]; rFile = null;
+  document.getElementById("rTitle").value=""; document.getElementById("rDesc").value=""; document.getElementById("rBadges").value="";
+  document.getElementById("dropzone").classList.remove("filled");
+  document.getElementById("dropText").innerHTML = "Arrastra aquí tu fichero <b>.html</b> o haz clic para seleccionar";
+  document.getElementById("rDest").innerHTML =
+    '<option value="public">🌐 Biblioteca pública (cualquiera puede verlo)</option>' +
+    clients.map(c=>`<option value="${c.slug}">🔒 ${c.name} (privado)</option>`).join("");
+  document.getElementById("rSwatches").innerHTML = COVERS.map((c,i)=>`<div class="swatch ${i===0?'sel':''}" style="background:${c.hex}" onclick="pickCover('rSwatches',${i})"></div>`).join("");
+  toggleDest();
+  openModal("reportModal");
+}
+function toggleDest(){
+  const v = document.getElementById("rDest").value;
+  document.getElementById("rDestHint").textContent = v==="public"
+    ? "Aparecerá en la landing pública, sin login."
+    : "Solo lo verán los emails dados de alta en este cliente.";
+}
+function fakeUpload(){
+  rFile = "informe-" + Math.floor(1000+performance.now()%9000) + ".html";
+  const dz = document.getElementById("dropzone");
+  dz.classList.add("filled");
+  document.getElementById("dropText").innerHTML = "✓ <b>"+rFile+"</b> · 248 KB — listo para publicar";
+}
+function saveReport(){
+  const title = document.getElementById("rTitle").value.trim();
+  if (!rFile) { hfToast("Sube un fichero HTML"); return; }
+  if (!title) { hfToast("Pon un título"); return; }
+  const dest = document.getElementById("rDest").value;
+  const badges = document.getElementById("rBadges").value.split(",").map(s=>s.trim()).filter(Boolean);
+  const today = new Date().toISOString().slice(0,10);
+  const rec = { id:"r-"+performance.now().toFixed(0), title, desc:document.getElementById("rDesc").value.trim()||"—",
+    cover:rCover.cls, badges:badges.length?badges:["Informe"], edition:"NEW", editionLabel:"Recién publicado",
+    stats:[{num:"—",label:"Índice"},{num:"—",label:"eNPS"},{num:"—",label:"Participación"}], href:"#", publishedAt:today };
+  if (dest==="public") { rec.canva=null; pubReports.push(rec); }
+  else { const c = clients.find(x=>x.slug===dest); c.reports.push(rec); }
+  closeModal("reportModal"); renderReports(); renderClients();
+  hfToast("Informe publicado"+(dest==="public"?" en la biblioteca pública":""));
+}
+
+/* ── Modal plumbing ── */
+function openModal(id){ document.getElementById(id).classList.add("open"); }
+function closeModal(id){ document.getElementById(id).classList.remove("open"); }
+document.querySelectorAll(".modal-backdrop").forEach(b=>b.addEventListener("click",e=>{ if(e.target===b) b.classList.remove("open"); }));
+
+renderClients(); renderReports();
+</script>
+</body>
+</html>

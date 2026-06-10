@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi espacio · Informes Happyforce</title>
+<link rel="icon" href="https://myhappyforce.com/wp-content/uploads/2019/06/cropped-favicon-32x32.png" sizes="32x32">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="demo-banner">
+  PROTOTIPO · <b>espacio privado del cliente</b> — solo visible para emails dados de alta en este cliente
+</div>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <a href="index.html" aria-label="Happyforce"><img src="https://myhappyforce.com/wp-content/uploads/2019/12/logo_happyforce_horizontal-1024x269.png" alt="Happyforce"></a>
+      <span class="divider"></span>
+      <span class="label">Espacio privado</span>
+    </div>
+    <div class="nav-right" id="navRight"></div>
+  </div>
+</nav>
+
+<div class="space-head" id="spaceHead"></div>
+
+<section class="reports" style="padding-top:18px">
+  <div class="reports-head">
+    <h2>Tus informes</h2>
+    <span class="count" id="repCount"></span>
+  </div>
+  <div class="grid" id="repGrid"></div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <img src="https://myhappyforce.com/wp-content/uploads/2020/01/logo-happyforce-dark-1.png" alt="Happyforce" style="filter:brightness(2)">
+    <span>&copy; Happyforce · Espacio privado de cliente</span>
+  </div>
+</footer>
+
+<script src="mock.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const sess = hfGetSession();
+
+/* ── Access guard ── */
+if (!sess) { location.href = "login.html"; }
+const slug = params.get("c") || (sess && sess.clientSlug);
+const client = hfClientBySlug(slug);
+
+// authorize: admin can view any space; client member only their own
+const allowed = sess && (sess.isAdmin || (sess.clientSlug && sess.clientSlug === slug));
+if (!client || !allowed) {
+  document.body.innerHTML =
+    '<div style="max-width:560px;margin:80px auto;text-align:center;font-family:var(--font);padding:0 20px">'+
+    '<div style="font-size:42px">🔒</div><h1 style="font-size:24px;margin:12px 0">Sin acceso a este espacio</h1>'+
+    '<p style="color:#6b7280;margin-bottom:22px">Tu cuenta no está dada de alta en este cliente.</p>'+
+    '<a class="btn btn-accent" href="index.html">Volver a la biblioteca</a></div>';
+  throw new Error("forbidden");
+}
+
+/* ── Nav ── */
+document.getElementById("navRight").innerHTML =
+  (sess.isAdmin ? '<a class="nav-cta" href="admin.html">← Volver al panel admin</a>' : '') +
+  '<div class="nav-user"><span class="avatar">'+sess.email.slice(0,2).toUpperCase()+'</span>'+sess.email+'</div>'+
+  '<a class="nav-cta" onclick="hfLogout()">Salir</a>';
+
+/* ── Header ── */
+document.getElementById("spaceHead").innerHTML =
+  '<div class="space-logo" style="background:'+client.color+'">'+client.initials+'</div>'+
+  '<div class="titles">'+
+    '<div class="lock-eyebrow">🔒 Espacio privado'+(sess.isAdmin?' · vista admin':'')+'</div>'+
+    '<h1>'+client.name+'</h1>'+
+    '<p>Tus informes de bienestar y compromiso, ordenados del más reciente al más antiguo.</p>'+
+  '</div>';
+
+/* ── Reports (chronological, newest first) ── */
+const reports = [...client.reports].sort((a,b)=> b.publishedAt.localeCompare(a.publishedAt));
+document.getElementById("repCount").textContent = reports.length + (reports.length===1?" informe":" informes");
+const grid = document.getElementById("repGrid");
+
+if (!reports.length) {
+  grid.outerHTML = '<div class="empty"><div class="big">📭</div><h3>Aún no hay informes publicados</h3>'+
+    '<p>Cuando tu equipo de Customer Advisory publique un informe, aparecerá aquí.</p></div>';
+} else {
+  grid.innerHTML = reports.map(r => `
+    <article class="card">
+      <div class="card-cover ${r.cover}">
+        <div class="card-badges">${r.badges.map(b=>`<span class="badge">${b}</span>`).join("")}</div>
+        <div class="card-edition">${r.edition}<span class="edition-label">${r.editionLabel}</span></div>
+      </div>
+      <div class="card-body">
+        <div class="card-meta">Publicado el ${fmtDate(r.publishedAt)}</div>
+        <h3 class="card-title">${r.title}</h3>
+        <p class="card-desc">${r.desc}</p>
+        <div class="card-stats">${r.stats.map(s=>`<div class="stat"><div class="stat-num">${s.num}</div><div class="stat-label">${s.label}</div></div>`).join("")}</div>
+        <div class="card-actions">
+          <a class="btn btn-primary" href="${r.href}">Abrir informe <span class="arrow">→</span></a>
+        </div>
+      </div>
+    </article>`).join("");
+}
+</script>
+</body>
+</html>

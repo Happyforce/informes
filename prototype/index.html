@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informes Happyforce · Prototipo</title>
+<link rel="icon" href="https://myhappyforce.com/wp-content/uploads/2019/06/cropped-favicon-32x32.png" sizes="32x32">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="demo-banner">
+  PROTOTIPO CLICABLE · sin backend · <b>landing pública</b> — prueba el login arriba a la derecha ↗
+</div>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <a href="https://myhappyforce.com/es/" aria-label="Happyforce"><img src="https://myhappyforce.com/wp-content/uploads/2019/12/logo_happyforce_horizontal-1024x269.png" alt="Happyforce"></a>
+      <span class="divider"></span>
+      <span class="label">Informes &amp; Publicaciones</span>
+    </div>
+    <div class="nav-right" id="navRight"><!-- session-aware --></div>
+  </div>
+</nav>
+
+<section class="hero">
+  <span class="hero-eyebrow">Biblioteca pública</span>
+  <h1>Informes sobre <em>felicidad, compromiso y liderazgo</em> en el trabajo.</h1>
+  <p>Aquí publicamos los estudios, informes sectoriales y análisis que producimos en Happyforce. Datos abiertos, interactivos y en español. ¿Eres cliente? Accede a tu espacio privado para ver tus informes.</p>
+</section>
+
+<section class="reports">
+  <div class="reports-head">
+    <h2>Publicaciones disponibles</h2>
+    <span class="count" id="pubCount"></span>
+  </div>
+  <div class="grid" id="pubGrid"></div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <img src="https://myhappyforce.com/wp-content/uploads/2020/01/logo-happyforce-dark-1.png" alt="Happyforce" style="filter:brightness(2)">
+    <span>&copy; Happyforce · <a href="https://myhappyforce.com/es/" target="_blank" rel="noopener">myhappyforce.com</a></span>
+  </div>
+</footer>
+
+<script src="mock.js"></script>
+<script>
+/* session-aware nav */
+(function renderNav(){
+  const s = hfGetSession();
+  const el = document.getElementById("navRight");
+  if (s) {
+    const inits = s.email.slice(0,2).toUpperCase();
+    let link = s.isAdmin ? "admin.html" : (s.clientSlug ? "space.html?c="+s.clientSlug : "#");
+    el.innerHTML =
+      '<a class="nav-cta" href="'+link+'">'+(s.isAdmin?'Panel admin':'Mi espacio')+' →</a>'+
+      '<div class="nav-user"><span class="avatar">'+inits+'</span></div>'+
+      '<a class="nav-cta" onclick="hfLogout()">Salir</a>';
+  } else {
+    el.innerHTML = '<a class="nav-cta" href="login.html">Acceder a mi espacio →</a>';
+  }
+})();
+
+/* public report grid */
+(function renderReports(){
+  const grid = document.getElementById("pubGrid");
+  document.getElementById("pubCount").textContent =
+    PUBLIC_REPORTS.length + (PUBLIC_REPORTS.length===1?" informe":" informes");
+  grid.innerHTML = PUBLIC_REPORTS.map(r => `
+    <article class="card">
+      <div class="card-cover ${r.cover}">
+        <div class="card-badges">${r.badges.map(b=>`<span class="badge">${b}</span>`).join("")}</div>
+        <div class="card-edition">${r.edition}<span class="edition-label">${r.editionLabel}</span></div>
+      </div>
+      <div class="card-body">
+        <h3 class="card-title">${r.title}</h3>
+        <p class="card-desc">${r.desc}</p>
+        <div class="card-stats">${r.stats.map(s=>`<div class="stat"><div class="stat-num">${s.num}</div><div class="stat-label">${s.label}</div></div>`).join("")}</div>
+        <div class="card-actions">
+          <a class="btn btn-primary" href="${r.href}">Leer informe <span class="arrow">→</span></a>
+          ${r.canva?`<a class="btn btn-secondary" href="${r.canva}" target="_blank" rel="noopener">Ver presentación ↗</a>`:""}
+        </div>
+      </div>
+    </article>`).join("");
+})();
+</script>
+</body>
+</html>
