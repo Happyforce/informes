@@ -40,5 +40,5 @@ The platform does NOT change how reports are authored: each report remains a sin
 
 ## Deploying
 
-- **Static site**: push to `master`. GitHub Pages serves the repo at the CNAME domain; no CI or preview step.
-- **Platform**: Vercel project with Root Directory `platform/`. Until DNS is switched, GitHub Pages remains production. Local dev: `cd platform && npm run dev` (port 4600; there is a `platform` entry in `.claude/launch.json`).
+- **Platform = production** since June 2026: `informes.myhappyforce.com` is served by Vercel (project `happyforce-team/informes`, Root Directory `platform/`, Supabase backend). The Vercel Git integration is connected: **pushing to `master` auto-deploys the platform**. Local dev: `cd platform && npm run dev` (port 4600; there is a `platform` entry in `.claude/launch.json`).
+- The static HTML reports at the repo root are no longer served via the domain (DNS points to Vercel; old URLs redirect to `/r/{slug}`). They remain in the repo as the source files migrated into Supabase Storage.
