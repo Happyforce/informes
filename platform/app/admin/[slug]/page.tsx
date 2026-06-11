@@ -127,8 +127,11 @@ export default async function AdminClientPage({
                   </a>
                 </td>
                 <td>{r.published_at}</td>
-                <td>
-                  <form action={deleteReportAction}>
+                <td style={{ whiteSpace: "nowrap" }}>
+                  <Link href={`/admin/edit/${r.id}`} className="row-edit-link">
+                    Editar
+                  </Link>
+                  <form action={deleteReportAction} style={{ display: "inline" }}>
                     <input type="hidden" name="id" value={r.id} />
                     <button className="btn-danger-link">Eliminar</button>
                   </form>

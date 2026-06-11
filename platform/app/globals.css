@@ -633,3 +633,6 @@ footer { background: var(--bg-dark); color: var(--ink-light); padding: 40px 24px
   border-radius: var(--radius-sm);
 }
 .upload-form[aria-busy="true"] { opacity: .92; }
+
+.row-edit-link { font-weight: 600; font-size: 13px; margin-right: 14px; color: var(--ink-secondary); }
+.row-edit-link:hover { color: var(--accent); }

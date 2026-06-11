@@ -169,6 +169,103 @@ export async function uploadReportAction(
   redirect(redirectTo);
 }
 
+export async function updateReportAction(
+  _prev: UploadState,
+  formData: FormData
+): Promise<UploadState> {
+  let redirectTo = "/admin";
+  try {
+    await requireAdmin();
+    const id = String(formData.get("id") ?? "");
+    if (!id) return { error: "Falta el identificador del informe." };
+
+    const admin = createAdminClient();
+    const { data: existing } = await admin
+      .from("reports")
+      .select("slug, storage_path")
+      .eq("id", id)
+      .maybeSingle();
+    if (!existing) return { error: "No se encontró el informe." };
+
+    const title = String(formData.get("title") ?? "").trim();
+    if (!title) return { error: "El título es obligatorio." };
+
+    const clientId = String(formData.get("client_id") ?? "");
+    const visibility = clientId ? "client" : "public";
+    redirectTo = clientId ? `/admin/${formData.get("client_slug")}` : "/admin";
+
+    const stats: ReportStat[] = [];
+    for (let i = 1; i <= 3; i++) {
+      const num = String(formData.get(`stat${i}_num`) ?? "").trim();
+      const label = String(formData.get(`stat${i}_label`) ?? "").trim();
+      if (num && label) stats.push({ num, label });
+    }
+    const badges = String(formData.get("badges") ?? "")
+      .split(",")
+      .map((b) => b.trim())
+      .filter(Boolean);
+
+    // Slug stays fixed (so /r/{slug} links never break). The storage path only
+    // changes when the report moves between public and a client; the filename
+    // (slug.html) is unchanged.
+    const newPath = `${visibility === "public" ? "public" : clientId}/${existing.slug}.html`;
+    let storagePath = existing.storage_path;
+    const file = formData.get("file") as File | null;
+
+    if (file && file.size > 0) {
+      if (!file.name.endsWith(".html") && file.type !== "text/html") {
+        return { error: "El fichero debe ser un .html." };
+      }
+      const { error: upErr } = await admin.storage
+        .from("reports")
+        .upload(newPath, Buffer.from(await file.arrayBuffer()), {
+          contentType: "text/html",
+          upsert: true,
+        });
+      if (upErr) return { error: `No se pudo subir el fichero: ${upErr.message}` };
+      if (newPath !== existing.storage_path) {
+        await admin.storage.from("reports").remove([existing.storage_path]);
+      }
+      storagePath = newPath;
+    } else if (newPath !== existing.storage_path) {
+      const { error: mvErr } = await admin.storage
+        .from("reports")
+        .move(existing.storage_path, newPath);
+      if (mvErr) return { error: `No se pudo mover el fichero: ${mvErr.message}` };
+      storagePath = newPath;
+    }
+
+    const publishedAt = String(formData.get("published_at") || "").trim();
+    const { error } = await admin
+      .from("reports")
+      .update({
+        title,
+        description: String(formData.get("description") ?? "").trim() || null,
+        client_id: clientId || null,
+        visibility,
+        cover: String(formData.get("cover") || "accent-orange"),
+        badges,
+        stats,
+        edition: String(formData.get("edition") ?? "").trim() || null,
+        edition_label:
+          String(formData.get("edition_label") ?? "").trim() || null,
+        canva_url: String(formData.get("canva_url") ?? "").trim() || null,
+        storage_path: storagePath,
+        ...(publishedAt ? { published_at: publishedAt } : {}),
+      })
+      .eq("id", id);
+    if (error) return { error: `No se pudo guardar: ${error.message}` };
+
+    revalidatePath("/admin");
+    revalidatePath("/");
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Error inesperado al guardar.",
+    };
+  }
+  redirect(redirectTo);
+}
+
 export async function deleteReportAction(formData: FormData) {
   await requireAdmin();
   const id = String(formData.get("id"));
