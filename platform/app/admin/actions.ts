@@ -89,70 +89,84 @@ export async function removeMemberAction(formData: FormData) {
 
 // ─── Reports ─────────────────────────────────────────────────
 
-export async function uploadReportAction(formData: FormData) {
-  await requireAdmin();
+export type UploadState = { error: string } | null;
 
-  const file = formData.get("file") as File | null;
-  if (!file || file.size === 0) throw new Error("Falta el fichero HTML");
-  if (!file.name.endsWith(".html") && file.type !== "text/html") {
-    throw new Error("El informe debe ser un fichero .html");
+export async function uploadReportAction(
+  _prev: UploadState,
+  formData: FormData
+): Promise<UploadState> {
+  let redirectTo = "/admin";
+  try {
+    await requireAdmin();
+
+    const file = formData.get("file") as File | null;
+    if (!file || file.size === 0) return { error: "Falta el fichero HTML." };
+    if (!file.name.endsWith(".html") && file.type !== "text/html") {
+      return { error: "El informe debe ser un fichero .html." };
+    }
+
+    const title = String(formData.get("title") ?? "").trim();
+    if (!title) return { error: "El título es obligatorio." };
+    const slug = slugify(String(formData.get("slug") || title));
+    const clientId = String(formData.get("client_id") ?? "");
+    const visibility = clientId ? "client" : "public";
+    redirectTo = clientId ? `/admin/${formData.get("client_slug")}` : "/admin";
+
+    const stats: ReportStat[] = [];
+    for (let i = 1; i <= 3; i++) {
+      const num = String(formData.get(`stat${i}_num`) ?? "").trim();
+      const label = String(formData.get(`stat${i}_label`) ?? "").trim();
+      if (num && label) stats.push({ num, label });
+    }
+
+    const badges = String(formData.get("badges") ?? "")
+      .split(",")
+      .map((b) => b.trim())
+      .filter(Boolean);
+
+    const storagePath = `${visibility === "public" ? "public" : clientId}/${slug}.html`;
+
+    const admin = createAdminClient();
+    const { error: upErr } = await admin.storage
+      .from("reports")
+      .upload(storagePath, Buffer.from(await file.arrayBuffer()), {
+        contentType: "text/html",
+        upsert: true,
+      });
+    if (upErr) return { error: `No se pudo subir el fichero: ${upErr.message}` };
+
+    const { error } = await admin.from("reports").upsert(
+      {
+        slug,
+        title,
+        description: String(formData.get("description") ?? "").trim() || null,
+        client_id: clientId || null,
+        visibility,
+        cover: String(formData.get("cover") || "accent-orange"),
+        badges,
+        stats,
+        edition: String(formData.get("edition") ?? "").trim() || null,
+        edition_label:
+          String(formData.get("edition_label") ?? "").trim() || null,
+        canva_url: String(formData.get("canva_url") ?? "").trim() || null,
+        storage_path: storagePath,
+        published_at:
+          String(formData.get("published_at") || "") ||
+          new Date().toISOString().slice(0, 10),
+      },
+      { onConflict: "slug" }
+    );
+    if (error) return { error: `No se pudo guardar el informe: ${error.message}` };
+
+    revalidatePath("/admin");
+    revalidatePath("/");
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Error inesperado al publicar.",
+    };
   }
-
-  const title = String(formData.get("title") ?? "").trim();
-  if (!title) throw new Error("El título es obligatorio");
-  const slug = slugify(String(formData.get("slug") || title));
-  const clientId = String(formData.get("client_id") ?? "");
-  const visibility = clientId ? "client" : "public";
-
-  const stats: ReportStat[] = [];
-  for (let i = 1; i <= 3; i++) {
-    const num = String(formData.get(`stat${i}_num`) ?? "").trim();
-    const label = String(formData.get(`stat${i}_label`) ?? "").trim();
-    if (num && label) stats.push({ num, label });
-  }
-
-  const badges = String(formData.get("badges") ?? "")
-    .split(",")
-    .map((b) => b.trim())
-    .filter(Boolean);
-
-  const storagePath = `${visibility === "public" ? "public" : clientId}/${slug}.html`;
-
-  const admin = createAdminClient();
-  const { error: upErr } = await admin.storage
-    .from("reports")
-    .upload(storagePath, Buffer.from(await file.arrayBuffer()), {
-      contentType: "text/html",
-      upsert: true,
-    });
-  if (upErr) throw new Error(`Error subiendo el fichero: ${upErr.message}`);
-
-  const { error } = await admin.from("reports").upsert(
-    {
-      slug,
-      title,
-      description: String(formData.get("description") ?? "").trim() || null,
-      client_id: clientId || null,
-      visibility,
-      cover: String(formData.get("cover") || "accent-orange"),
-      badges,
-      stats,
-      edition: String(formData.get("edition") ?? "").trim() || null,
-      edition_label:
-        String(formData.get("edition_label") ?? "").trim() || null,
-      canva_url: String(formData.get("canva_url") ?? "").trim() || null,
-      storage_path: storagePath,
-      published_at:
-        String(formData.get("published_at") || "") ||
-        new Date().toISOString().slice(0, 10),
-    },
-    { onConflict: "slug" }
-  );
-  if (error) throw new Error(`Error guardando el informe: ${error.message}`);
-
-  revalidatePath("/admin");
-  revalidatePath("/");
-  redirect(clientId ? `/admin/${formData.get("client_slug")}` : "/admin");
+  // Outside the try so the redirect's internal signal isn't swallowed.
+  redirect(redirectTo);
 }
 
 export async function deleteReportAction(formData: FormData) {

@@ -608,3 +608,28 @@ footer { background: var(--bg-dark); color: var(--ink-light); padding: 40px 24px
   .upload-grid { grid-template-columns: 1fr; }
   .upload-preview { position: static; }
 }
+
+/* ─── Feedback de envío (publicar informe) ─── */
+.btn[disabled] { opacity: .65; cursor: progress; }
+.spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  margin-right: 4px;
+  vertical-align: -2px;
+  border: 2px solid rgba(255,255,255,.45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.form-error {
+  margin-top: 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+}
+.upload-form[aria-busy="true"] { opacity: .92; }

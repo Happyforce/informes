@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useActionState, useMemo, useRef, useState } from "react";
 import ReportCard from "@/components/ReportCard";
 import { uploadReportAction } from "./actions";
 import { extractReportMeta } from "@/lib/extract-report-meta";
@@ -42,6 +42,7 @@ export default function UploadReportForm({
   const [canvaUrl, setCanvaUrl] = useState("");
   const [clientId, setClientId] = useState(fixedClient?.id ?? "");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [state, formAction, isPending] = useActionState(uploadReportAction, null);
 
   const selectedSlug = fixedClient
     ? fixedClient.slug
@@ -104,7 +105,7 @@ export default function UploadReportForm({
   const hasFile = !!fileName;
 
   return (
-    <form action={uploadReportAction} className="admin-form upload-form">
+    <form action={formAction} className="admin-form upload-form" aria-busy={isPending}>
       {/* ─── Dropzone ─── */}
       <label
         className={`dropzone${dragging ? " dragging" : ""}${hasFile ? " has-file" : ""}`}
@@ -328,7 +329,26 @@ export default function UploadReportForm({
             </div>
           </details>
 
-          <button className="btn btn-accent">Publicar informe</button>
+          {state?.error && (
+            <div className="form-error" role="alert">
+              ⚠ {state.error}
+            </div>
+          )}
+          <button className="btn btn-accent" disabled={isPending}>
+            {isPending ? (
+              <>
+                <span className="spinner" aria-hidden="true" /> Publicando
+                informe…
+              </>
+            ) : (
+              "Publicar informe"
+            )}
+          </button>
+          {isPending && (
+            <p className="hint" style={{ marginTop: 4 }}>
+              Subiendo el informe y publicándolo, no cierres esta ventana…
+            </p>
+          )}
         </>
       )}
     </form>
