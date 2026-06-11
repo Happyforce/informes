@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import ReportCard from "@/components/ReportCard";
 import { uploadReportAction } from "./actions";
 import { extractReportMeta } from "@/lib/extract-report-meta";
@@ -41,6 +41,7 @@ export default function UploadReportForm({
   const [publishedAt, setPublishedAt] = useState(today());
   const [canvaUrl, setCanvaUrl] = useState("");
   const [clientId, setClientId] = useState(fixedClient?.id ?? "");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedSlug = fixedClient
     ? fixedClient.slug
@@ -115,14 +116,19 @@ export default function UploadReportForm({
         onDrop={(e) => {
           e.preventDefault();
           setDragging(false);
+          // drag-drop doesn't populate a file input on its own — do it so the
+          // file is actually submitted with the form.
+          if (fileInputRef.current && e.dataTransfer.files?.length) {
+            fileInputRef.current.files = e.dataTransfer.files;
+          }
           onFile(e.dataTransfer.files?.[0]);
         }}
       >
         <input
+          ref={fileInputRef}
           type="file"
           name="file"
           accept=".html,text/html"
-          required
           hidden
           onChange={(e) => onFile(e.target.files?.[0])}
         />
