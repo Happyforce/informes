@@ -5,9 +5,8 @@ export const metadata: Metadata = {
   title: "Informes Happyforce",
   description:
     "Publicaciones e informes de Happyforce sobre felicidad, compromiso y liderazgo en el trabajo.",
-  icons: {
-    icon: "https://myhappyforce.com/wp-content/uploads/2019/06/cropped-favicon-32x32.png",
-  },
+  // favicon is self-hosted at app/icon.png (Next serves it automatically),
+  // so we don't depend on the WordPress site's asset URLs.
 };
 
 export default function RootLayout({
