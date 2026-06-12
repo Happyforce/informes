@@ -15,10 +15,22 @@ export default function ReportCard({
   report: Report;
   showDate?: boolean;
 }) {
+  const cta =
+    report.kind === "pdf"
+      ? { label: "Ver PDF", icon: "→", blank: true }
+      : report.kind === "link"
+        ? { label: "Abrir informe", icon: "↗", blank: true }
+        : { label: "Leer informe", icon: "→", blank: false };
+
   return (
     <article className="card">
       <div className={`card-cover ${report.cover}`}>
         <div className="card-badges">
+          {report.kind !== "html" && (
+            <span className="badge kind-badge">
+              {report.kind === "pdf" ? "PDF" : "Enlace ↗"}
+            </span>
+          )}
           {report.badges.map((b) => (
             <span key={b} className="badge">
               {b}
@@ -53,8 +65,14 @@ export default function ReportCard({
           </div>
         )}
         <div className="card-actions">
-          <a className="btn btn-primary" href={`/r/${report.slug}`}>
-            Leer informe <span className="arrow">→</span>
+          <a
+            className="btn btn-primary"
+            href={`/r/${report.slug}`}
+            {...(cta.blank
+              ? { target: "_blank", rel: "noopener noreferrer" }
+              : {})}
+          >
+            {cta.label} <span className="arrow">{cta.icon}</span>
           </a>
           {report.canva_url && (
             <a

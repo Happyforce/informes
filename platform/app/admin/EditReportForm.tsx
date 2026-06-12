@@ -6,9 +6,9 @@ import { updateReportAction } from "./actions";
 import { COVER_OPTIONS, type Client, type Report } from "@/lib/types";
 
 /**
- * Edit the metadata of an already-published report. The HTML file is only
- * replaced if a new one is uploaded; otherwise the existing file is kept.
- * The slug is fixed (so /r/{slug} links never break).
+ * Edit an already-published report's metadata and/or kind. The file is only
+ * replaced if a new one is uploaded; the slug is fixed (so /r/{slug} links
+ * never break).
  */
 export default function EditReportForm({
   report,
@@ -17,6 +17,13 @@ export default function EditReportForm({
   report: Report;
   clients: Client[];
 }) {
+  const [source, setSource] = useState<"file" | "link">(
+    report.kind === "link" ? "link" : "file"
+  );
+  const [newFileName, setNewFileName] = useState("");
+  const [newFileIsPdf, setNewFileIsPdf] = useState<boolean | null>(null);
+  const [externalUrl, setExternalUrl] = useState(report.external_url ?? "");
+
   const [title, setTitle] = useState(report.title);
   const [description, setDescription] = useState(report.description ?? "");
   const [stats, setStats] = useState<{ num: string; label: string }[]>(() => {
@@ -31,12 +38,19 @@ export default function EditReportForm({
   const [publishedAt, setPublishedAt] = useState(report.published_at);
   const [canvaUrl, setCanvaUrl] = useState(report.canva_url ?? "");
   const [clientId, setClientId] = useState(report.client_id ?? "");
-  const [newFileName, setNewFileName] = useState("");
 
-  const [state, formAction, isPending] = useActionState(
-    updateReportAction,
-    null
-  );
+  const [state, formAction, isPending] = useActionState(updateReportAction, null);
+
+  const kind =
+    source === "link"
+      ? "link"
+      : newFileIsPdf !== null
+        ? newFileIsPdf
+          ? "pdf"
+          : "html"
+        : report.kind === "pdf"
+          ? "pdf"
+          : "html";
 
   const selectedSlug = clients.find((c) => c.id === clientId)?.slug ?? "";
 
@@ -46,21 +60,90 @@ export default function EditReportForm({
       title: title || "Título del informe",
       description: description || "Descripción del informe.",
       visibility: clientId ? "client" : "public",
+      kind,
       cover,
       badges: badges.split(",").map((b) => b.trim()).filter(Boolean),
       stats: stats.filter((s) => s.num && s.label),
       edition: edition || null,
       edition_label: editionLabel || null,
       canva_url: canvaUrl || null,
+      external_url: externalUrl || null,
       published_at: publishedAt,
     }),
-    [report, title, description, clientId, cover, badges, stats, edition, editionLabel, canvaUrl, publishedAt]
+    [report, title, description, clientId, kind, cover, badges, stats, edition, editionLabel, canvaUrl, externalUrl, publishedAt]
   );
 
   return (
     <form action={formAction} className="admin-form upload-form" aria-busy={isPending}>
       <input type="hidden" name="id" value={report.id} />
+      <input type="hidden" name="kind" value={kind} />
       <input type="hidden" name="client_slug" value={selectedSlug} />
+
+      <p className="hint" style={{ marginBottom: 12 }}>
+        URL pública: <code>/r/{report.slug}</code> (no cambia al editar)
+      </p>
+
+      <div className="source-tabs">
+        <button
+          type="button"
+          className={`source-tab${source === "file" ? " active" : ""}`}
+          onClick={() => setSource("file")}
+        >
+          📄 Archivo (HTML o PDF)
+        </button>
+        <button
+          type="button"
+          className={`source-tab${source === "link" ? " active" : ""}`}
+          onClick={() => setSource("link")}
+        >
+          🔗 Enlace externo
+        </button>
+      </div>
+
+      {source === "file" ? (
+        <div className="field">
+          <label>
+            {report.kind === "link"
+              ? "Sube el fichero del informe"
+              : "Reemplazar el fichero (opcional)"}
+          </label>
+          <input
+            className="input"
+            type="file"
+            name="file"
+            accept=".html,text/html,.pdf,application/pdf"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              setNewFileName(f?.name ?? "");
+              setNewFileIsPdf(
+                f
+                  ? f.name.toLowerCase().endsWith(".pdf") ||
+                      f.type === "application/pdf"
+                  : null
+              );
+            }}
+          />
+          <p className="hint">
+            {newFileName
+              ? `Se usará: ${newFileName}`
+              : report.kind === "link"
+                ? "Este informe era un enlace; sube un HTML o PDF para convertirlo en fichero."
+                : `Fichero actual: ${report.slug}.${report.kind === "pdf" ? "pdf" : "html"}. Déjalo vacío para conservarlo.`}
+          </p>
+        </div>
+      ) : (
+        <div className="field">
+          <label>Enlace al informe *</label>
+          <input
+            className="input"
+            type="url"
+            name="external_url"
+            placeholder="https://drive.google.com/…"
+            value={externalUrl}
+            onChange={(e) => setExternalUrl(e.target.value)}
+          />
+        </div>
+      )}
 
       <div className="upload-grid">
         <div className="upload-preview" aria-hidden>
@@ -69,10 +152,6 @@ export default function EditReportForm({
         </div>
 
         <div className="upload-fields">
-          <p className="hint" style={{ marginBottom: 12 }}>
-            URL pública: <code>/r/{report.slug}</code> (no cambia al editar)
-          </p>
-
           <div className="field">
             <label>Título *</label>
             <input
@@ -141,6 +220,13 @@ export default function EditReportForm({
               ))}
             </select>
           </div>
+
+          {source === "link" && clientId && (
+            <div className="warn-note">
+              ⚠ Enlace externo en un espacio privado: la privacidad real del
+              fichero depende de sus permisos en la plataforma de origen.
+            </div>
+          )}
         </div>
       </div>
 
@@ -212,22 +298,6 @@ export default function EditReportForm({
               onChange={(e) => setCanvaUrl(e.target.value)}
             />
           </div>
-        </div>
-
-        <div className="field">
-          <label>Reemplazar el fichero HTML (opcional)</label>
-          <input
-            className="input"
-            type="file"
-            name="file"
-            accept=".html,text/html"
-            onChange={(e) => setNewFileName(e.target.files?.[0]?.name ?? "")}
-          />
-          <p className="hint">
-            {newFileName
-              ? `Se reemplazará por: ${newFileName}`
-              : "Déjalo vacío para conservar el HTML actual."}
-          </p>
         </div>
       </details>
 

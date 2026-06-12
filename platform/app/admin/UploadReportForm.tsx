@@ -11,10 +11,9 @@ function today() {
 }
 
 /**
- * Upload form: drop the HTML, it parses the report and pre-fills the card
- * metadata (title, description, stats, edition, cover). The admin reviews a
- * live preview instead of transcribing. Rarely-edited / non-extractable
- * fields live in a collapsed "Personalización" section.
+ * Upload form. Three kinds of report:
+ *  - file → HTML (auto-fills metadata + live preview) or PDF (manual)
+ *  - link → external URL (Drive, etc.), metadata manual
  */
 export default function UploadReportForm({
   clients,
@@ -23,7 +22,10 @@ export default function UploadReportForm({
   clients: Client[];
   fixedClient?: Client;
 }) {
+  const [source, setSource] = useState<"file" | "link">("file");
   const [fileName, setFileName] = useState("");
+  const [fileIsPdf, setFileIsPdf] = useState(false);
+  const [externalUrl, setExternalUrl] = useState("");
   const [autofilled, setAutofilled] = useState(false);
   const [dragging, setDragging] = useState(false);
 
@@ -44,15 +46,28 @@ export default function UploadReportForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [state, formAction, isPending] = useActionState(uploadReportAction, null);
 
+  const kind = source === "link" ? "link" : fileIsPdf ? "pdf" : "html";
   const selectedSlug = fixedClient
     ? fixedClient.slug
     : clients.find((c) => c.id === clientId)?.slug ?? "";
+  const hasFile = !!fileName;
+  const showFields = source === "link" ? externalUrl.trim().length > 0 : hasFile;
 
   async function onFile(file: File | undefined) {
     if (!file) return;
+    const isPdf =
+      file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf";
+    setFileIsPdf(isPdf);
     setFileName(file.name);
-    const meta = extractReportMeta(await file.text());
 
+    if (isPdf) {
+      // No structured metadata in a PDF — seed the title from the filename.
+      if (!title) setTitle(file.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " "));
+      setAutofilled(false);
+      return;
+    }
+
+    const meta = extractReportMeta(await file.text());
     if (meta.title) setTitle(meta.title);
     if (meta.description) setDescription(meta.description);
     if (meta.stats.length) {
@@ -64,16 +79,11 @@ export default function UploadReportForm({
     if (meta.editionLabel) setEditionLabel(meta.editionLabel);
     if (meta.cover) setCover(meta.cover);
     if (meta.badges.length) setBadges(meta.badges.join(", "));
-
-    const found =
-      !!meta.title ||
-      !!meta.description ||
-      meta.stats.length > 0 ||
-      !!meta.edition;
-    setAutofilled(found);
+    setAutofilled(
+      !!meta.title || !!meta.description || meta.stats.length > 0 || !!meta.edition
+    );
   }
 
-  // Synthetic Report for the live preview.
   const previewReport = useMemo<Report>(
     () => ({
       id: "preview",
@@ -83,71 +93,100 @@ export default function UploadReportForm({
       description:
         description || "La descripción aparecerá aquí cuando subas el informe.",
       visibility: clientId ? "client" : "public",
+      kind,
       cover,
-      badges: badges
-        .split(",")
-        .map((b) => b.trim())
-        .filter(Boolean),
+      badges: badges.split(",").map((b) => b.trim()).filter(Boolean),
       stats: stats.filter((s) => s.num && s.label),
       edition: edition || null,
       edition_label: editionLabel || null,
       canva_url: canvaUrl || null,
-      storage_path: "",
+      storage_path: null,
+      external_url: externalUrl || null,
       published_at: publishedAt || today(),
       created_at: publishedAt || today(),
     }),
-    [
-      clientId, title, description, cover, badges, stats,
-      edition, editionLabel, canvaUrl, publishedAt,
-    ]
+    [clientId, kind, title, description, cover, badges, stats, edition, editionLabel, canvaUrl, externalUrl, publishedAt]
   );
-
-  const hasFile = !!fileName;
 
   return (
     <form action={formAction} className="admin-form upload-form" aria-busy={isPending}>
-      {/* ─── Dropzone ─── */}
-      <label
-        className={`dropzone${dragging ? " dragging" : ""}${hasFile ? " has-file" : ""}`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragging(false);
-          // drag-drop doesn't populate a file input on its own — do it so the
-          // file is actually submitted with the form.
-          if (fileInputRef.current && e.dataTransfer.files?.length) {
-            fileInputRef.current.files = e.dataTransfer.files;
-          }
-          onFile(e.dataTransfer.files?.[0]);
-        }}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          name="file"
-          accept=".html,text/html"
-          hidden
-          onChange={(e) => onFile(e.target.files?.[0])}
-        />
-        <span className="dropzone-icon">{hasFile ? "📄" : "⬆️"}</span>
-        <span className="dropzone-text">
-          {hasFile ? (
-            <>
-              <b>{fileName}</b> — haz clic para cambiarlo
-            </>
-          ) : (
-            <>
-              Arrastra aquí el <b>.html</b> del informe o haz clic para elegirlo
-            </>
-          )}
-        </span>
-      </label>
+      <input type="hidden" name="kind" value={kind} />
 
-      {hasFile && (
+      {/* ─── Origen ─── */}
+      <div className="source-tabs">
+        <button
+          type="button"
+          className={`source-tab${source === "file" ? " active" : ""}`}
+          onClick={() => setSource("file")}
+        >
+          📄 Archivo (HTML o PDF)
+        </button>
+        <button
+          type="button"
+          className={`source-tab${source === "link" ? " active" : ""}`}
+          onClick={() => setSource("link")}
+        >
+          🔗 Enlace externo
+        </button>
+      </div>
+
+      {source === "file" ? (
+        <label
+          className={`dropzone${dragging ? " dragging" : ""}${hasFile ? " has-file" : ""}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            if (fileInputRef.current && e.dataTransfer.files?.length) {
+              fileInputRef.current.files = e.dataTransfer.files;
+            }
+            onFile(e.dataTransfer.files?.[0]);
+          }}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            name="file"
+            accept=".html,text/html,.pdf,application/pdf"
+            hidden
+            onChange={(e) => onFile(e.target.files?.[0])}
+          />
+          <span className="dropzone-icon">{hasFile ? (fileIsPdf ? "📕" : "📄") : "⬆️"}</span>
+          <span className="dropzone-text">
+            {hasFile ? (
+              <>
+                <b>{fileName}</b> — haz clic para cambiarlo
+              </>
+            ) : (
+              <>
+                Arrastra el <b>.html</b> o <b>.pdf</b> del informe, o haz clic
+                para elegirlo
+              </>
+            )}
+          </span>
+        </label>
+      ) : (
+        <div className="field">
+          <label>Enlace al informe *</label>
+          <input
+            className="input"
+            type="url"
+            name="external_url"
+            placeholder="https://drive.google.com/…"
+            value={externalUrl}
+            onChange={(e) => setExternalUrl(e.target.value)}
+          />
+          <p className="hint">
+            El informe se abrirá en esta URL (Google Drive, Notion, etc.).
+          </p>
+        </div>
+      )}
+
+      {showFields && (
         <>
           {autofilled && (
             <div className="autofill-note">
@@ -156,7 +195,6 @@ export default function UploadReportForm({
             </div>
           )}
 
-          {/* ─── Preview + main fields ─── */}
           <div className="upload-grid">
             <div className="upload-preview" aria-hidden>
               <div className="upload-preview-label">Vista previa</div>
@@ -216,7 +254,6 @@ export default function UploadReportForm({
                 ))}
               </div>
 
-              {/* ─── Destino ─── */}
               {fixedClient ? (
                 <>
                   <input type="hidden" name="client_id" value={fixedClient.id} />
@@ -246,10 +283,18 @@ export default function UploadReportForm({
                   <input type="hidden" name="client_slug" value={selectedSlug} />
                 </>
               )}
+
+              {source === "link" && clientId && (
+                <div className="warn-note">
+                  ⚠ Es un enlace externo en un espacio privado: la plataforma
+                  controla quién ve la tarjeta, pero la privacidad real del
+                  fichero depende de sus permisos en la plataforma de origen.
+                  Asegúrate de restringir el acceso allí.
+                </div>
+              )}
             </div>
           </div>
 
-          {/* ─── Personalización (colapsada) ─── */}
           <details className="upload-extra">
             <summary>Personalización de la tarjeta (opcional)</summary>
             <div className="admin-form-row" style={{ marginTop: 14 }}>
@@ -346,7 +391,7 @@ export default function UploadReportForm({
           </button>
           {isPending && (
             <p className="hint" style={{ marginTop: 4 }}>
-              Subiendo el informe y publicándolo, no cierres esta ventana…
+              Publicando el informe, no cierres esta ventana…
             </p>
           )}
         </>

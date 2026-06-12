@@ -1,4 +1,5 @@
 export type Visibility = "public" | "client";
+export type ReportKind = "html" | "pdf" | "link";
 
 export interface Client {
   id: string;
@@ -29,13 +30,15 @@ export interface Report {
   title: string;
   description: string | null;
   visibility: Visibility;
+  kind: ReportKind;
   cover: string;
   badges: string[];
   stats: ReportStat[];
   edition: string | null;
   edition_label: string | null;
   canva_url: string | null;
-  storage_path: string;
+  storage_path: string | null;
+  external_url: string | null;
   published_at: string;
   created_at: string;
 }

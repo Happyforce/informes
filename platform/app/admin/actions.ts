@@ -99,18 +99,14 @@ export async function uploadReportAction(
   try {
     await requireAdmin();
 
-    const file = formData.get("file") as File | null;
-    if (!file || file.size === 0) return { error: "Falta el fichero HTML." };
-    if (!file.name.endsWith(".html") && file.type !== "text/html") {
-      return { error: "El informe debe ser un fichero .html." };
-    }
-
+    const kind = String(formData.get("kind") || "html");
     const title = String(formData.get("title") ?? "").trim();
     if (!title) return { error: "El título es obligatorio." };
     const slug = slugify(String(formData.get("slug") || title));
     const clientId = String(formData.get("client_id") ?? "");
     const visibility = clientId ? "client" : "public";
     redirectTo = clientId ? `/admin/${formData.get("client_slug")}` : "/admin";
+    const prefix = visibility === "public" ? "public" : clientId;
 
     const stats: ReportStat[] = [];
     for (let i = 1; i <= 3; i++) {
@@ -124,16 +120,34 @@ export async function uploadReportAction(
       .map((b) => b.trim())
       .filter(Boolean);
 
-    const storagePath = `${visibility === "public" ? "public" : clientId}/${slug}.html`;
-
     const admin = createAdminClient();
-    const { error: upErr } = await admin.storage
-      .from("reports")
-      .upload(storagePath, Buffer.from(await file.arrayBuffer()), {
-        contentType: "text/html",
-        upsert: true,
-      });
-    if (upErr) return { error: `No se pudo subir el fichero: ${upErr.message}` };
+    let storagePath: string | null = null;
+    let externalUrl: string | null = null;
+
+    if (kind === "link") {
+      externalUrl = String(formData.get("external_url") ?? "").trim();
+      if (!/^https?:\/\//i.test(externalUrl)) {
+        return { error: "El enlace debe empezar por http:// o https://." };
+      }
+    } else {
+      const file = formData.get("file") as File | null;
+      if (!file || file.size === 0) return { error: "Falta el fichero del informe." };
+      const isPdf = kind === "pdf";
+      const okExt = isPdf
+        ? file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf"
+        : file.name.toLowerCase().endsWith(".html") || file.type === "text/html";
+      if (!okExt) {
+        return { error: isPdf ? "El fichero debe ser un .pdf." : "El fichero debe ser un .html." };
+      }
+      storagePath = `${prefix}/${slug}.${isPdf ? "pdf" : "html"}`;
+      const { error: upErr } = await admin.storage
+        .from("reports")
+        .upload(storagePath, Buffer.from(await file.arrayBuffer()), {
+          contentType: isPdf ? "application/pdf" : "text/html",
+          upsert: true,
+        });
+      if (upErr) return { error: `No se pudo subir el fichero: ${upErr.message}` };
+    }
 
     const { error } = await admin.from("reports").upsert(
       {
@@ -142,6 +156,7 @@ export async function uploadReportAction(
         description: String(formData.get("description") ?? "").trim() || null,
         client_id: clientId || null,
         visibility,
+        kind,
         cover: String(formData.get("cover") || "accent-orange"),
         badges,
         stats,
@@ -150,6 +165,7 @@ export async function uploadReportAction(
           String(formData.get("edition_label") ?? "").trim() || null,
         canva_url: String(formData.get("canva_url") ?? "").trim() || null,
         storage_path: storagePath,
+        external_url: externalUrl,
         published_at:
           String(formData.get("published_at") || "") ||
           new Date().toISOString().slice(0, 10),
@@ -182,7 +198,7 @@ export async function updateReportAction(
     const admin = createAdminClient();
     const { data: existing } = await admin
       .from("reports")
-      .select("slug, storage_path")
+      .select("slug, kind, storage_path, external_url")
       .eq("id", id)
       .maybeSingle();
     if (!existing) return { error: "No se encontró el informe." };
@@ -190,9 +206,11 @@ export async function updateReportAction(
     const title = String(formData.get("title") ?? "").trim();
     if (!title) return { error: "El título es obligatorio." };
 
+    const kind = String(formData.get("kind") || existing.kind || "html");
     const clientId = String(formData.get("client_id") ?? "");
     const visibility = clientId ? "client" : "public";
     redirectTo = clientId ? `/admin/${formData.get("client_slug")}` : "/admin";
+    const prefix = visibility === "public" ? "public" : clientId;
 
     const stats: ReportStat[] = [];
     for (let i = 1; i <= 3; i++) {
@@ -205,34 +223,57 @@ export async function updateReportAction(
       .map((b) => b.trim())
       .filter(Boolean);
 
-    // Slug stays fixed (so /r/{slug} links never break). The storage path only
-    // changes when the report moves between public and a client; the filename
-    // (slug.html) is unchanged.
-    const newPath = `${visibility === "public" ? "public" : clientId}/${existing.slug}.html`;
-    let storagePath = existing.storage_path;
-    const file = formData.get("file") as File | null;
+    // Slug stays fixed (so /r/{slug} links never break).
+    let storagePath: string | null = existing.storage_path;
+    let externalUrl: string | null = existing.external_url;
 
-    if (file && file.size > 0) {
-      if (!file.name.endsWith(".html") && file.type !== "text/html") {
-        return { error: "El fichero debe ser un .html." };
+    if (kind === "link") {
+      externalUrl = String(formData.get("external_url") ?? "").trim();
+      if (!/^https?:\/\//i.test(externalUrl)) {
+        return { error: "El enlace debe empezar por http:// o https://." };
       }
-      const { error: upErr } = await admin.storage
-        .from("reports")
-        .upload(newPath, Buffer.from(await file.arrayBuffer()), {
-          contentType: "text/html",
-          upsert: true,
-        });
-      if (upErr) return { error: `No se pudo subir el fichero: ${upErr.message}` };
-      if (newPath !== existing.storage_path) {
+      if (existing.storage_path) {
         await admin.storage.from("reports").remove([existing.storage_path]);
       }
+      storagePath = null;
+    } else {
+      const isPdf = kind === "pdf";
+      const newPath = `${prefix}/${existing.slug}.${isPdf ? "pdf" : "html"}`;
+      const file = formData.get("file") as File | null;
+
+      if (file && file.size > 0) {
+        const okExt = isPdf
+          ? file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf"
+          : file.name.toLowerCase().endsWith(".html") || file.type === "text/html";
+        if (!okExt) {
+          return { error: isPdf ? "El fichero debe ser un .pdf." : "El fichero debe ser un .html." };
+        }
+        const { error: upErr } = await admin.storage
+          .from("reports")
+          .upload(newPath, Buffer.from(await file.arrayBuffer()), {
+            contentType: isPdf ? "application/pdf" : "text/html",
+            upsert: true,
+          });
+        if (upErr) return { error: `No se pudo subir el fichero: ${upErr.message}` };
+        if (existing.storage_path && existing.storage_path !== newPath) {
+          await admin.storage.from("reports").remove([existing.storage_path]);
+        }
+      } else {
+        // No new file: only valid if it was already this same file kind.
+        if (existing.kind !== kind || !existing.storage_path) {
+          return {
+            error: `Para este tipo de informe necesitas subir el fichero ${isPdf ? "PDF" : "HTML"}.`,
+          };
+        }
+        if (existing.storage_path !== newPath) {
+          const { error: mvErr } = await admin.storage
+            .from("reports")
+            .move(existing.storage_path, newPath);
+          if (mvErr) return { error: `No se pudo mover el fichero: ${mvErr.message}` };
+        }
+      }
       storagePath = newPath;
-    } else if (newPath !== existing.storage_path) {
-      const { error: mvErr } = await admin.storage
-        .from("reports")
-        .move(existing.storage_path, newPath);
-      if (mvErr) return { error: `No se pudo mover el fichero: ${mvErr.message}` };
-      storagePath = newPath;
+      externalUrl = null;
     }
 
     const publishedAt = String(formData.get("published_at") || "").trim();
@@ -243,6 +284,7 @@ export async function updateReportAction(
         description: String(formData.get("description") ?? "").trim() || null,
         client_id: clientId || null,
         visibility,
+        kind,
         cover: String(formData.get("cover") || "accent-orange"),
         badges,
         stats,
@@ -251,6 +293,7 @@ export async function updateReportAction(
           String(formData.get("edition_label") ?? "").trim() || null,
         canva_url: String(formData.get("canva_url") ?? "").trim() || null,
         storage_path: storagePath,
+        external_url: externalUrl,
         ...(publishedAt ? { published_at: publishedAt } : {}),
       })
       .eq("id", id);

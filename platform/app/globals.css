@@ -636,3 +636,20 @@ footer { background: var(--bg-dark); color: var(--ink-light); padding: 40px 24px
 
 .row-edit-link { font-weight: 600; font-size: 13px; margin-right: 14px; color: var(--ink-secondary); }
 .row-edit-link:hover { color: var(--accent); }
+
+/* ─── Selector de origen y tipos de informe ─── */
+.source-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+.source-tab {
+  flex: 1; padding: 11px 14px; border: 1px solid var(--border);
+  background: var(--white); border-radius: var(--radius-sm);
+  font-family: var(--font); font-size: 14px; font-weight: 600;
+  color: var(--ink-muted); cursor: pointer; transition: all .15s;
+}
+.source-tab:hover { border-color: var(--accent); color: var(--accent); }
+.source-tab.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.warn-note {
+  margin-top: 6px; background: #fffbeb; border: 1px solid #fde68a;
+  color: #92400e; font-size: 13px; line-height: 1.5;
+  padding: 11px 14px; border-radius: var(--radius-sm);
+}
+.kind-badge { background: rgba(0,0,0,.32); border-color: rgba(255,255,255,.35); }

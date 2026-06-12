@@ -17,7 +17,7 @@ export async function GET(
   const supabase = await createClient();
   const { data: report } = await supabase
     .from("reports")
-    .select("storage_path, visibility")
+    .select("kind, storage_path, external_url, visibility")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -33,6 +33,25 @@ export async function GET(
     return new NextResponse("Informe no encontrado", { status: 404 });
   }
 
+  const cacheControl =
+    report.visibility === "public"
+      ? "public, max-age=300"
+      : "private, no-store";
+
+  // External link: redirect (the permission check above already gated access).
+  if (report.kind === "link") {
+    if (!report.external_url || !/^https?:\/\//i.test(report.external_url)) {
+      return new NextResponse("Enlace del informe no válido", { status: 502 });
+    }
+    return NextResponse.redirect(report.external_url, 302);
+  }
+
+  // File-backed (html / pdf): stream from the private bucket.
+  if (!report.storage_path) {
+    return new NextResponse("El informe no tiene fichero asociado", {
+      status: 500,
+    });
+  }
   const admin = createAdminClient();
   const { data: file, error } = await admin.storage
     .from("reports")
@@ -42,13 +61,20 @@ export async function GET(
     return new NextResponse("Error al cargar el informe", { status: 500 });
   }
 
+  if (report.kind === "pdf") {
+    return new NextResponse(file, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": "inline",
+        "Cache-Control": cacheControl,
+      },
+    });
+  }
+
   return new NextResponse(await file.text(), {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control":
-        report.visibility === "public"
-          ? "public, max-age=300"
-          : "private, no-store",
+      "Cache-Control": cacheControl,
       "X-Frame-Options": "SAMEORIGIN",
     },
   });
