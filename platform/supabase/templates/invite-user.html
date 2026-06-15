@@ -1,0 +1,62 @@
+<!--
+  Plantilla del email "Invite user" para Supabase Auth.
+  Pegar en: Authentication → Emails → Invite user → Message body (source).
+  Asunto sugerido: Te han dado acceso a tus informes de Happyforce
+  El botón usa token_hash + type=invite (NO {{ .ConfirmationURL }}), para que
+  /auth/callback lo resuelva con verifyOtp.
+  Variables disponibles: {{ .TokenHash }} {{ .SiteURL }} {{ .Email }} {{ .Token }}
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+       style="background:#f9fafb;margin:0;padding:32px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="520" cellpadding="0" cellspacing="0"
+             style="background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;max-width:520px;">
+        <!-- Cabecera -->
+        <tr>
+          <td style="padding:28px 36px 0;">
+            <img src="https://myhappyforce.com/wp-content/uploads/2019/12/logo_happyforce_horizontal-1024x269.png"
+                 alt="Happyforce" height="30" style="height:30px;width:auto;display:block;">
+          </td>
+        </tr>
+        <!-- Cuerpo -->
+        <tr>
+          <td style="padding:24px 36px 8px;">
+            <h1 style="margin:0 0 12px;font-size:22px;font-weight:800;color:#111827;letter-spacing:-.02em;">
+              Te han dado acceso a tus informes
+            </h1>
+            <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#374151;">
+              Hola, tu equipo de Happyforce ha habilitado tu acceso a los informes.
+              Pulsa el botón para entrar — no necesitas contraseña.
+            </p>
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="border-radius:8px;background:#f26522;">
+                  <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite"
+                     style="display:inline-block;padding:13px 26px;font-size:15px;font-weight:600;
+                            color:#ffffff;text-decoration:none;border-radius:8px;">
+                    Entrar en mis informes →
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#6b7280;">
+              La próxima vez podrás entrar desde
+              <a href="https://informes.myhappyforce.com" style="color:#6b7280;">informes.myhappyforce.com</a>
+              pidiendo un enlace mágico a este mismo correo. Si no esperabas este
+              acceso, puedes ignorar este mensaje.
+            </p>
+          </td>
+        </tr>
+        <!-- Pie -->
+        <tr>
+          <td style="padding:24px 36px 28px;border-top:1px solid #f3f4f6;">
+            <p style="margin:0;font-size:12px;color:#9ca3af;">
+              Happyforce · <a href="https://informes.myhappyforce.com" style="color:#9ca3af;">informes.myhappyforce.com</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>

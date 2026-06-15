@@ -101,7 +101,9 @@ export default async function AdminClientPage({
           <button className="btn btn-accent">Dar acceso</button>
         </form>
         <p className="hint">
-          Estas personas podrán entrar con un enlace mágico enviado a su email.
+          Al dar acceso, la persona recibe al instante un email de Happyforce
+          con un enlace para entrar. Después podrá volver a entrar cuando quiera
+          con un enlace mágico a ese mismo correo.
         </p>
       </section>
 

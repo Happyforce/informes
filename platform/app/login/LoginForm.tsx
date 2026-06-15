@@ -23,6 +23,11 @@ export default function LoginForm() {
       email: trimmed,
       options: {
         emailRedirectTo: `${location.origin}/auth/callback`,
+        // Don't auto-create accounts from the login form: that path sends the
+        // unbranded "Confirm signup" email. Accounts are created when an admin
+        // grants access (inviteUserByEmail), so members already exist here and
+        // receive the branded Magic Link template.
+        shouldCreateUser: false,
       },
     });
     setLoading(false);
