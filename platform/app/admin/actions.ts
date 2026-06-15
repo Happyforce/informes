@@ -74,6 +74,26 @@ export async function addMemberAction(formData: FormData) {
   if (error && !error.message.includes("duplicate")) {
     throw new Error(error.message);
   }
+
+  // Send the access email right away: create the Supabase Auth user and deliver
+  // the branded "Invite user" template. This is what makes "Dar acceso" notify
+  // the client, and — because the user now exists in Auth — their later logins
+  // get the branded Magic Link template instead of the "Confirm signup" one.
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://informes.myhappyforce.com";
+  const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(
+    email,
+    { redirectTo: `${siteUrl}/auth/callback` }
+  );
+  // Already-registered emails (re-granted access, admins, returning clients)
+  // already have an account and can log in via magic link, so that's not fatal.
+  if (
+    inviteError &&
+    !/already|registered|exists/i.test(inviteError.message)
+  ) {
+    throw new Error(`Acceso guardado, pero no se pudo enviar el email: ${inviteError.message}`);
+  }
+
   revalidatePath(`/admin/${clientSlug}`);
 }
 
