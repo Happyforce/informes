@@ -501,6 +501,20 @@ footer { background: var(--bg-dark); color: var(--ink-light); padding: 40px 24px
 .admin-table a { font-weight: 600; color: var(--ink); }
 .admin-table a:hover { color: var(--accent); }
 
+/* Estado de acceso de cada miembro */
+.member-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; line-height: 1;
+  padding: 5px 10px; border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+.member-status::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor;
+}
+.member-status.active  { background: #ecfdf5; color: #047857; }
+.member-status.invited { background: #fff7ed; color: #c2410c; }
+.member-status.missing { background: #fef2f2; color: #b91c1c; }
+
 .admin-details { margin-top: 16px; }
 .admin-details > summary {
   cursor: pointer;

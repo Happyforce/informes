@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   addMemberAction,
   removeMemberAction,
+  resendMemberInviteAction,
   deleteReportAction,
   deleteClientAction,
 } from "../actions";
@@ -40,6 +41,24 @@ export default async function AdminClientPage({
   const members = (membersData ?? []) as ClientMember[];
   const reports = (reportsData ?? []) as Report[];
 
+  // Estado de acceso: cruzamos cada miembro con su usuario en Supabase Auth.
+  // "Dar acceso" crea el usuario y le envía el email; si el envío falló (p. ej.
+  // rate limit), el miembro queda guardado pero sin usuario en Auth → "missing",
+  // recuperable con "Reenviar acceso".
+  const { data: authList } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  const authByEmail = new Map(
+    (authList?.users ?? []).map((u) => [u.email?.toLowerCase() ?? "", u])
+  );
+  function memberStatus(email: string): {
+    kind: "active" | "invited" | "missing";
+    label: string;
+  } {
+    const u = authByEmail.get(email.toLowerCase());
+    if (!u) return { kind: "missing", label: "Sin enviar" };
+    if (u.last_sign_in_at) return { kind: "active", label: "Ha entrado" };
+    return { kind: "invited", label: "Invitación enviada" };
+  }
+
   return (
     <>
       <header className="admin-head">
@@ -69,21 +88,39 @@ export default async function AdminClientPage({
         </div>
         <table className="admin-table">
           <tbody>
-            {members.map((m) => (
-              <tr key={m.id}>
-                <td>{m.email}</td>
-                <td style={{ width: 1 }}>
-                  <form action={removeMemberAction}>
-                    <input type="hidden" name="id" value={m.id} />
-                    <input type="hidden" name="client_slug" value={client.slug} />
-                    <button className="btn-danger-link">Quitar</button>
-                  </form>
-                </td>
-              </tr>
-            ))}
+            {members.map((m) => {
+              const st = memberStatus(m.email);
+              return (
+                <tr key={m.id}>
+                  <td>{m.email}</td>
+                  <td style={{ width: 1 }}>
+                    <span className={`member-status ${st.kind}`}>{st.label}</span>
+                  </td>
+                  <td style={{ width: 1, whiteSpace: "nowrap" }}>
+                    <form
+                      action={resendMemberInviteAction}
+                      style={{ display: "inline" }}
+                    >
+                      <input type="hidden" name="email" value={m.email} />
+                      <input type="hidden" name="client_slug" value={client.slug} />
+                      <button className="row-edit-link">
+                        {st.kind === "missing" ? "Enviar acceso" : "Reenviar"}
+                      </button>
+                    </form>
+                    <form action={removeMemberAction} style={{ display: "inline" }}>
+                      <input type="hidden" name="id" value={m.id} />
+                      <input type="hidden" name="client_slug" value={client.slug} />
+                      <button className="btn-danger-link">Quitar</button>
+                    </form>
+                  </td>
+                </tr>
+              );
+            })}
             {members.length === 0 && (
               <tr>
-                <td className="hint">Nadie tiene acceso todavía.</td>
+                <td className="hint" colSpan={3}>
+                  Nadie tiene acceso todavía.
+                </td>
               </tr>
             )}
           </tbody>
@@ -102,8 +139,10 @@ export default async function AdminClientPage({
         </form>
         <p className="hint">
           Al dar acceso, la persona recibe al instante un email de Happyforce
-          con un enlace para entrar. Después podrá volver a entrar cuando quiera
-          con un enlace mágico a ese mismo correo.
+          con un enlace para entrar. <b>Invitación enviada</b> = ya tiene el
+          correo y aún no ha entrado; <b>Ha entrado</b> = ha accedido al menos
+          una vez; <b>Sin enviar</b> = el email no llegó a salir (reintenta con
+          «Enviar acceso»).
         </p>
       </section>
 

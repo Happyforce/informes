@@ -60,6 +60,48 @@ export async function deleteClientAction(formData: FormData) {
 
 // ─── Members ─────────────────────────────────────────────────
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://informes.myhappyforce.com";
+
+// Already has an Auth account (admins, re-grants, returning clients): they can
+// log in via magic link, so there's nothing to send and it isn't an error.
+const ALREADY_REGISTERED = /already|registered|exists/i;
+// Supabase throttles auth emails; when several invites fire close together the
+// later ones come back rate-limited (HTTP 429).
+const RATE_LIMITED = /rate limit|too many|over_email_send/i;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Create the Supabase Auth user and send the branded "Invite user" email.
+ * Retries on rate-limit so a burst of "Dar acceso" clicks doesn't leave members
+ * stranded without an account. Returns whether the email already had an account
+ * (in which case nothing was sent). Throws — leaving any member row in place so
+ * it can be recovered with "Reenviar acceso" — when the email can't be sent.
+ */
+async function inviteToAuth(
+  admin: ReturnType<typeof createAdminClient>,
+  email: string
+): Promise<{ alreadyRegistered: boolean }> {
+  let lastError = "";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { error } = await admin.auth.admin.inviteUserByEmail(email, {
+      redirectTo: `${SITE_URL}/auth/callback`,
+    });
+    if (!error) return { alreadyRegistered: false };
+    if (ALREADY_REGISTERED.test(error.message)) {
+      return { alreadyRegistered: true };
+    }
+    lastError = error.message;
+    if (!RATE_LIMITED.test(error.message)) break;
+    await sleep(5000);
+  }
+  throw new Error(
+    `No se pudo enviar el email de acceso (${lastError}). El acceso queda ` +
+      `guardado; espera un momento y pulsa "Reenviar acceso".`
+  );
+}
+
 export async function addMemberAction(formData: FormData) {
   await requireAdmin();
   const clientId = String(formData.get("client_id"));
@@ -75,24 +117,27 @@ export async function addMemberAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  // Send the access email right away: create the Supabase Auth user and deliver
-  // the branded "Invite user" template. This is what makes "Dar acceso" notify
-  // the client, and — because the user now exists in Auth — their later logins
-  // get the branded Magic Link template instead of the "Confirm signup" one.
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://informes.myhappyforce.com";
-  const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(
-    email,
-    { redirectTo: `${siteUrl}/auth/callback` }
-  );
-  // Already-registered emails (re-granted access, admins, returning clients)
-  // already have an account and can log in via magic link, so that's not fatal.
-  if (
-    inviteError &&
-    !/already|registered|exists/i.test(inviteError.message)
-  ) {
-    throw new Error(`Acceso guardado, pero no se pudo enviar el email: ${inviteError.message}`);
-  }
+  // Send the access email right away: this is what makes "Dar acceso" notify the
+  // client, and — because the user now exists in Auth — their later logins get
+  // the branded Magic Link template instead of the "Confirm signup" one.
+  await inviteToAuth(admin, email);
+
+  revalidatePath(`/admin/${clientSlug}`);
+}
+
+/**
+ * Re-send the access email to a member who was saved but never got their Auth
+ * account (e.g. the original invite was rate-limited). Safe to click on anyone:
+ * if they already have an account it's a no-op.
+ */
+export async function resendMemberInviteAction(formData: FormData) {
+  await requireAdmin();
+  const clientSlug = String(formData.get("client_slug"));
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!email.includes("@")) throw new Error("Email no válido");
+
+  const admin = createAdminClient();
+  await inviteToAuth(admin, email);
 
   revalidatePath(`/admin/${clientSlug}`);
 }
