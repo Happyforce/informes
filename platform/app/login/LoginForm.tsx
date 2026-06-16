@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { isAdminEmail } from "@/lib/admin-domain";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -23,11 +24,13 @@ export default function LoginForm() {
       email: trimmed,
       options: {
         emailRedirectTo: `${location.origin}/auth/callback`,
-        // Don't auto-create accounts from the login form: that path sends the
-        // unbranded "Confirm signup" email. Accounts are created when an admin
-        // grants access (inviteUserByEmail), so members already exist here and
-        // receive the branded Magic Link template.
-        shouldCreateUser: false,
+        // Client members are never auto-created here: their account is made when
+        // an admin grants access (inviteUserByEmail), so they already exist and
+        // get the branded Invite/Magic Link email. Admins (@myhappyforce.com),
+        // though, are never invited anywhere — so they must be able to self-serve
+        // from this form. Auto-creating them sends the branded "Confirm signup"
+        // template, which also lands on /auth/callback, so login still works.
+        shouldCreateUser: isAdminEmail(trimmed),
       },
     });
     setLoading(false);
