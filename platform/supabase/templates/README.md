@@ -44,8 +44,12 @@ el botón (token_hash + `type=signup`) le hace entrar igual que un magic link.
    limita el envío a unos pocos correos al día y solo a emails del equipo, así
    que en producción los clientes no recibirían nada.
 
-3. **No cambies el formato del enlace** — el botón de `invite-user.html` apunta a
-   `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite`, **no** a
+3. **No cambies el formato del enlace** — el botón de **las tres plantillas**
+   apunta a `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=…`
+   (`type=invite`, `type=signup` o `type=magiclink` según la plantilla), **no** a
    `{{ .ConfirmationURL }}`. `/auth/callback` espera `token_hash` + `type` y los
-   resuelve con `verifyOtp`. Si cambias a `{{ .ConfirmationURL }}` el enlace deja
-   de cuadrar con el callback y el acceso falla.
+   resuelve con `verifyOtp`. Si usas `{{ .ConfirmationURL }}` el enlace sale por el
+   flujo implícito y deja el token en el `#hash`, que el callback (server-side) no
+   puede leer: redirige a `/login?error=link` y el acceso falla. Le pasó a la
+   plantilla **Magic Link**, que dejaba fuera a los admins (que ya existen en Auth
+   y reciben siempre esa plantilla).

@@ -1,10 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import { ADMIN_DOMAIN, isAdminEmail } from "@/lib/admin-domain";
 
-export const ADMIN_DOMAIN = "@myhappyforce.com";
-
-export function isAdminEmail(email: string | undefined | null): boolean {
-  return (email ?? "").toLowerCase().endsWith(ADMIN_DOMAIN);
-}
+// Re-exported so existing server-side imports (`@/lib/auth`) keep working.
+export { ADMIN_DOMAIN, isAdminEmail };
 
 /** Current authenticated user (or null). */
 export async function getUser() {
