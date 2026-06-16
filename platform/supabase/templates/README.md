@@ -13,22 +13,24 @@ Dashboard → **Authentication → Emails**, pestaña por plantilla, campo
 | --------------------- | ---------------------- | ------------------------------------------------- |
 | **Invite user**       | `invite-user.html`     | `inviteUserByEmail` — al "Dar acceso" en el panel |
 | **Magic Link**        | `magic-link.html`      | login de un usuario que **ya existe** en Auth     |
-| **Confirm signup**    | brandear (ver abajo)   | login/alta de un email que **aún no existe**      |
+| **Confirm signup**    | `confirm-signup.html`  | un usuario **sin confirmar** pide un enlace de acceso |
 
 ### Por qué importa "Confirm signup"
 
-Supabase decide la plantilla según si el email ya tiene cuenta en Auth:
+Supabase decide la plantilla según el estado del usuario en Auth:
 
-- Usuario **nuevo** (no existe en Auth) → manda **Confirm signup**.
-- Usuario **existente** → manda **Magic Link**.
+- Email **sin cuenta** (y `shouldCreateUser:true`) → **Confirm signup**.
+- Usuario que **existe pero está sin confirmar** → **Confirm signup**.
+- Usuario que **existe y está confirmado** → **Magic Link**.
 
-Con este flujo las cuentas se crean al dar acceso (`inviteUserByEmail`), así que
-el cliente ya existe en Auth antes de su primer login y recibe **Magic Link**
-(branded). Pero **Confirm signup** sigue siendo la red de seguridad: si alguna vez
-llega un login de un email que no existe (p. ej. alta manual fuera del panel),
-esa es la plantilla que se dispara. Por eso hay que **brandearla también** — si no,
-sale la plantilla por defecto de Supabase, sin branding y en inglés, que es
-justo el bug que arreglamos. Puedes reutilizar el copy de `invite-user.html`.
+Aquí está la trampa: `inviteUserByEmail` (lo que dispara "Dar acceso") crea al
+usuario **sin confirmar** — se confirma al pulsar el enlace de la invitación. Si
+el cliente **ignora la invitación** y luego pide un magic link en `/login`,
+todavía está sin confirmar, así que Supabase le manda **Confirm signup**, no el
+Magic Link. Sin brandear, le llega el "Confirm your email address" por defecto
+(inglés, sin logo), que confunde. Por eso esta plantilla **tiene que estar
+brandeada igualmente**: con `confirm-signup.html` recibe un email de Happyforce y
+el botón (token_hash + `type=signup`) le hace entrar igual que un magic link.
 
 ## Requisitos para que los enlaces funcionen
 
