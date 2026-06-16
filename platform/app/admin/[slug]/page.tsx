@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   addMemberAction,
   removeMemberAction,
+  resendMemberInviteAction,
   deleteReportAction,
   deleteClientAction,
 } from "../actions";
@@ -72,8 +73,16 @@ export default async function AdminClientPage({
             {members.map((m) => (
               <tr key={m.id}>
                 <td>{m.email}</td>
-                <td style={{ width: 1 }}>
-                  <form action={removeMemberAction}>
+                <td style={{ width: 1, whiteSpace: "nowrap" }}>
+                  <form
+                    action={resendMemberInviteAction}
+                    style={{ display: "inline" }}
+                  >
+                    <input type="hidden" name="email" value={m.email} />
+                    <input type="hidden" name="client_slug" value={client.slug} />
+                    <button className="row-edit-link">Reenviar acceso</button>
+                  </form>
+                  <form action={removeMemberAction} style={{ display: "inline" }}>
                     <input type="hidden" name="id" value={m.id} />
                     <input type="hidden" name="client_slug" value={client.slug} />
                     <button className="btn-danger-link">Quitar</button>
@@ -103,7 +112,8 @@ export default async function AdminClientPage({
         <p className="hint">
           Al dar acceso, la persona recibe al instante un email de Happyforce
           con un enlace para entrar. Después podrá volver a entrar cuando quiera
-          con un enlace mágico a ese mismo correo.
+          con un enlace mágico a ese mismo correo. Si alguien no lo recibe, usa
+          «Reenviar acceso».
         </p>
       </section>
 
