@@ -14,14 +14,70 @@ Todo se hace con las herramientas del conector MCP **informes**:
 `list_clients`, `get_client`, `list_public_reports`, `create_client`,
 `add_member`, `prepare_upload`, `publish_report`, `update_report`.
 
-## 0. Comprueba la conexión
+## 0. Comprueba la conexión (y guía la configuración si falta)
 
-Si las herramientas `informes` no están disponibles o devuelven «Token no
-válido», la persona tiene que crear su token en
-https://informes.myhappyforce.com/admin/claude y seguir las instrucciones de esa
-página. Para **subir ficheros** hace falta un terminal (Claude Code o la pestaña
-Code de Claude Desktop): el fichero se sube con `curl`. Desde el chat sin
-terminal solo se pueden consultar espacios, dar accesos y publicar enlaces.
+Si tienes herramientas como `list_clients` y `prepare_upload` del servidor
+**informes**, llama a `list_clients`: si responde, sigue al paso 1.
+
+Si no aparecen, o devuelven «Token no válido», **no sigas con la petición**:
+acompaña a la persona a conectarse y retómala después. Solo puede hacerlo
+alguien con email `@myhappyforce.com`.
+
+**Nunca pidas el token en el chat.** Actúa en nombre de su dueño con permisos
+de administrador y quedaría guardado en la conversación. Lo ejecuta la persona
+en su propio terminal. Si aun así lo pega aquí, no lo repitas y recomiéndale
+revocarlo en `/admin/claude` y crear otro cuando termine.
+
+Mira dónde estás y sigue el caso que toque:
+
+**A. Claude Code o pestaña Code de Claude Desktop** (tienes terminal).
+Comprueba primero si ya está configurado:
+
+```bash
+claude mcp get informes 2>&1 | head -5
+```
+
+- **No está configurado.** Explica estos pasos:
+  1. Abrir https://informes.myhappyforce.com/admin/claude y entrar con su email
+     de Happyforce (le llega un enlace por correo).
+  2. Pulsar «Crear token», con el nombre del ordenador (p. ej. «Portátil de
+     Marta»).
+  3. Copiar el comando de la sección «Claude Code» (ya lleva su token) y
+     ejecutarlo en **otra ventana de terminal** (la app Terminal, o el panel
+     de terminal de Claude Desktop). No en este chat ni con `!`, para que el
+     token no quede en la conversación.
+  4. Instalar también la skill con el comando de esa misma página, si no la
+     tiene.
+  5. Abrir **una sesión nueva** de Claude (los conectores se cargan al
+     empezar) y volver a pedir lo que quería.
+- **Está configurado, pero da «Token no válido».** El token se revocó o se
+  copió mal. Que lo quite con `claude mcp remove informes -s user` en su
+  terminal y repita los pasos 1-3 y 5 con un token nuevo.
+- **Está configurado y no conecta** (error de red o de servidor): que lo
+  intente de nuevo en una sesión nueva y, si sigue, que avise a Producto.
+
+**B. Chat de Claude Desktop** (sin terminal).
+
+1. Pasos 1 y 2 del caso A.
+2. Comprobar que tiene Node.js: en Terminal, `node -v`. Si no responde, que lo
+   instale desde https://nodejs.org (versión LTS).
+3. En Claude Desktop: Ajustes → Desarrollador → Editar configuración. Abrir
+   `claude_desktop_config.json` y pegar el bloque de la sección «Chat de
+   Claude Desktop» de `/admin/claude`. Si el fichero ya tiene otros servidores
+   en `mcpServers`, que añada solo la entrada `informes` dentro, sin duplicar
+   `mcpServers`.
+4. Cerrar Claude Desktop del todo (Cmd+Q) y volver a abrirlo.
+
+Avísale de que desde el chat podrá consultar espacios, dar accesos y publicar
+enlaces, pero **para subir ficheros** (HTML, PDF, vídeos) tiene que usar la
+pestaña Code (caso A), porque la subida se hace con `curl`.
+
+**C. claude.ai en el navegador o en el móvil.** Aquí no se puede conectar.
+Que use Claude Desktop (caso A o B), o el panel
+https://informes.myhappyforce.com/admin para hacerlo a mano.
+
+Cuando vuelva con la conexión hecha, comprueba con `list_clients` que
+funciona antes de seguir.
 
 ## 1. Identifica el cliente
 
