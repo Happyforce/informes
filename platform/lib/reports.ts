@@ -58,12 +58,15 @@ function checkUrl(url: string, what = "El enlace"): string {
 // ─── Staged uploads ──────────────────────────────────────────
 
 export interface StagedUpload {
+  uploadId: string;
   stagedPath: string;
   uploadUrl: string;
   contentType: string;
   kind: ReportKind;
   expiresInSeconds: number;
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /** Drop staged uploads nobody claimed within a day (abandoned forms etc.). */
 async function sweepStaleUploads(admin: Admin) {
@@ -78,26 +81,73 @@ async function sweepStaleUploads(admin: Admin) {
   if (stale.length) await admin.storage.from(BUCKET).remove(stale);
 }
 
-export async function createStagedUpload(fileName: string): Promise<StagedUpload> {
+/** New upload id (uploads/<id>.<ext>), sweeping abandoned uploads first. */
+export async function newUploadId(): Promise<string> {
+  await sweepStaleUploads(createAdminClient()).catch(() => {});
+  return randomUUID();
+}
+
+/**
+ * Signed URL to PUT the file for upload <uploadId> (valid 2 h). Called by
+ * prepare_upload (terminal/curl), by the admin forms and by the /subir page.
+ */
+export async function signUploadFor(uploadId: string, fileName: string): Promise<StagedUpload> {
+  if (!UUID_RE.test(uploadId)) throw new ReportError("Identificador de subida no válido.");
   const type = fileTypeFor(fileName);
   if (!type) {
     throw new ReportError(`Tipo de fichero no admitido. Usa ${FILE_TYPES_LABEL}.`);
   }
   const admin = createAdminClient();
-  await sweepStaleUploads(admin).catch(() => {});
-  const stagedPath = `uploads/${randomUUID()}.${type.ext}`;
+  // One file per upload id: if they pick another type, drop the previous one.
+  const { data: previous } = await admin.storage.from(BUCKET).list("uploads", { search: uploadId });
+  const others = (previous ?? [])
+    .map((f) => `uploads/${f.name}`)
+    .filter((p) => p !== `uploads/${uploadId}.${type.ext}`);
+  if (others.length) await admin.storage.from(BUCKET).remove(others);
+
+  const stagedPath = `uploads/${uploadId}.${type.ext}`;
   const { data, error } = await admin.storage
     .from(BUCKET)
-    .createSignedUploadUrl(stagedPath);
+    .createSignedUploadUrl(stagedPath, { upsert: true });
   if (error || !data) {
     throw new ReportError(`No se pudo preparar la subida: ${error?.message}`);
   }
   return {
+    uploadId,
     stagedPath,
     uploadUrl: data.signedUrl,
     contentType: type.contentType,
     kind: type.kind,
     expiresInSeconds: 2 * 60 * 60, // Supabase signed upload URLs last 2 h
+  };
+}
+
+export async function createStagedUpload(fileName: string): Promise<StagedUpload> {
+  return signUploadFor(await newUploadId(), fileName);
+}
+
+export interface StagedFile {
+  stagedPath: string;
+  kind: ReportKind;
+  sizeBytes: number;
+  /** Card metadata the upload page extracted from an HTML report, if any. */
+  extracted: Record<string, unknown> | null;
+}
+
+/** Has the file for <uploadId> arrived? */
+export async function findStagedUpload(uploadId: string): Promise<StagedFile | null> {
+  if (!UUID_RE.test(uploadId)) throw new ReportError("Identificador de subida no válido.");
+  const admin = createAdminClient();
+  const { data } = await admin.storage.from(BUCKET).list("uploads", { search: uploadId });
+  const file = (data ?? []).find((f) => STAGED_PATH_RE.test(`uploads/${f.name}`));
+  if (!file) return null;
+  const stagedPath = `uploads/${file.name}`;
+  const { data: info } = await admin.storage.from(BUCKET).info(stagedPath);
+  return {
+    stagedPath,
+    kind: fileTypeFor(file.name)!.kind,
+    sizeBytes: Number(file.metadata?.size ?? info?.size ?? 0),
+    extracted: (info?.metadata as Record<string, unknown> | undefined) ?? null,
   };
 }
 

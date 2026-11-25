@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyApiToken } from "@/lib/api-tokens";
+import { verifyOAuthAccessToken } from "@/lib/oauth";
 import { ReportError } from "@/lib/reports";
 import { SERVER_INSTRUCTIONS, TOOLS, type ToolContext } from "@/lib/mcp/tools";
 
@@ -9,7 +10,11 @@ import { SERVER_INSTRUCTIONS, TOOLS, type ToolContext } from "@/lib/mcp/tools";
  * JSON-RPC message (or a batch) and gets a plain JSON reply. No sessions, no
  * SSE — nothing here needs server→client streaming.
  *
- * Auth: `Authorization: Bearer hfi_…` personal token created in /admin/claude.
+ * Auth (Authorization: Bearer …):
+ *  - hfo_… OAuth access token: the organization connector in claude.ai (each
+ *    member clicks "Connect" once). Discovery via /.well-known/… (see
+ *    next.config rewrites) and the WWW-Authenticate header on 401.
+ *  - hfi_… personal token created in /admin/claude (manual setup).
  */
 
 export const dynamic = "force-dynamic";
@@ -81,15 +86,23 @@ async function handle(msg: RpcMessage, ctx: ToolContext) {
 export async function POST(request: Request) {
   const auth = request.headers.get("authorization") ?? "";
   const token = auth.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? null;
-  const email = await verifyApiToken(token);
+  const email = token?.startsWith("hfo_")
+    ? await verifyOAuthAccessToken(token)
+    : await verifyApiToken(token);
   if (!email) {
+    const origin = new URL(request.url).origin;
     return NextResponse.json(
       rpcError(
         null,
         -32001,
-        "Token no válido o revocado. Crea uno en https://informes.myhappyforce.com/admin/claude"
+        "No autorizado: conecta el conector «Informes Happyforce» en Claude (Ajustes → Conectores)."
       ),
-      { status: 401 }
+      {
+        status: 401,
+        headers: {
+          "WWW-Authenticate": `Bearer realm="informes", resource_metadata="${origin}/.well-known/oauth-protected-resource"`,
+        },
+      }
     );
   }
 

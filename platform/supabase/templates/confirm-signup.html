@@ -49,9 +49,17 @@
                 </td>
               </tr>
             </table>
+            <p style="margin:22px 0 8px;font-size:14px;line-height:1.6;color:#374151;">
+              ¿Te piden un código en la pantalla de acceso? Escribe este:
+            </p>
+            <div style="display:inline-block;padding:10px 18px;background:#f9fafb;border:1px solid #e5e7eb;
+                        border-radius:8px;font-size:26px;font-weight:800;letter-spacing:.22em;color:#111827;
+                        font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;">
+              {{ .Token }}
+            </div>
             <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#6b7280;">
-              Este enlace caduca en unos minutos y solo puede usarse una vez. Si no
-              has solicitado el acceso, puedes ignorar este correo.
+              El enlace y el código caducan en una hora y solo pueden usarse una vez.
+              Si no has solicitado el acceso, puedes ignorar este correo.
             </p>
           </td>
         </tr>

@@ -7,77 +7,43 @@ description: Publica y gestiona informes en los espacios de cliente de informes.
 
 Customer Advisory comparte informes con cada cliente en un **espacio privado**
 (`informes.myhappyforce.com/c/{cliente}`). Solo entran los emails con acceso
-(login por enlace mágico). Cada informe vive en `/r/{slug}` y puede ser un HTML
-autocontenido, un PDF, un vídeo o un enlace externo.
+(login con código por email). Cada informe vive en `/r/{slug}` y puede ser un
+HTML autocontenido, un PDF, un vídeo o un enlace externo.
 
-Todo se hace con las herramientas del conector MCP **informes**:
+Todo se hace con las herramientas del conector **Informes Happyforce**:
 `list_clients`, `get_client`, `list_public_reports`, `create_client`,
-`add_member`, `prepare_upload`, `publish_report`, `update_report`.
+`add_member`, `prepare_upload`, `check_upload`, `publish_report`,
+`update_report`.
 
-## 0. Comprueba la conexión (y guía la configuración si falta)
+Funciona en el chat (Claude Desktop, web, móvil) y en Claude Code. La
+diferencia es cómo llegan los ficheros: **con terminal** (Claude Code o pestaña
+Code) los subes tú con `curl` y puedes revisarlos y comprimirlos; **sin
+terminal** (chat) la persona los arrastra a un enlace de subida que le das.
 
-Si tienes herramientas como `list_clients` y `prepare_upload` del servidor
-**informes**, llama a `list_clients`: si responde, sigue al paso 1.
+## 0. Comprueba la conexión (y guía si falta)
 
-Si no aparecen, o devuelven «Token no válido», **no sigas con la petición**:
-acompaña a la persona a conectarse y retómala después. Solo puede hacerlo
-alguien con email `@myhappyforce.com`.
+Si tienes las herramientas del conector (`list_clients`, `prepare_upload`…),
+llama a `list_clients`: si responde, sigue al paso 1.
 
-**Nunca pidas el token en el chat.** Actúa en nombre de su dueño con permisos
-de administrador y quedaría guardado en la conversación. Lo ejecuta la persona
-en su propio terminal. Si aun así lo pega aquí, no lo repitas y recomiéndale
-revocarlo en `/admin/claude` y crear otro cuando termine.
+Si no aparecen o piden autorización, **no sigas con la petición**: guía a la
+persona y retómala después. Solo pueden conectarse cuentas `@myhappyforce.com`.
 
-Mira dónde estás y sigue el caso que toque:
+1. En Claude: **Ajustes → Conectores**, buscar **Informes Happyforce** y
+   pulsar **Conectar**. (En Claude Code: `/mcp`, elegir «claude.ai Informes
+   Happyforce» y autenticar.)
+2. Se abre la web de informes: escribir su email @myhappyforce.com y el código
+   que le llega por correo, en esa misma ventana.
+3. Pulsar **Permitir**. Solo se hace una vez.
+4. Volver a la conversación (en el chat, activar el conector en el menú «+» →
+   Conectores si no está activo) y repetir la petición.
 
-**A. Claude Code o pestaña Code de Claude Desktop** (tienes terminal).
-Comprueba primero si ya está configurado:
+Si **Informes Happyforce no aparece** en la lista de conectores, el owner de la
+organización aún no lo ha añadido: tiene las instrucciones en
+https://informes.myhappyforce.com/admin/claude.
 
-```bash
-claude mcp get informes 2>&1 | head -5
-```
-
-- **No está configurado.** Explica estos pasos:
-  1. Abrir https://informes.myhappyforce.com/admin/claude y entrar con su email
-     de Happyforce (le llega un enlace por correo).
-  2. Pulsar «Crear token», con el nombre del ordenador (p. ej. «Portátil de
-     Marta»).
-  3. Copiar el comando de la sección «Claude Code» (ya lleva su token) y
-     ejecutarlo en **otra ventana de terminal** (la app Terminal, o el panel
-     de terminal de Claude Desktop). No en este chat ni con `!`, para que el
-     token no quede en la conversación.
-  4. Instalar también la skill con el comando de esa misma página, si no la
-     tiene.
-  5. Abrir **una sesión nueva** de Claude (los conectores se cargan al
-     empezar) y volver a pedir lo que quería.
-- **Está configurado, pero da «Token no válido».** El token se revocó o se
-  copió mal. Que lo quite con `claude mcp remove informes -s user` en su
-  terminal y repita los pasos 1-3 y 5 con un token nuevo.
-- **Está configurado y no conecta** (error de red o de servidor): que lo
-  intente de nuevo en una sesión nueva y, si sigue, que avise a Producto.
-
-**B. Chat de Claude Desktop** (sin terminal).
-
-1. Pasos 1 y 2 del caso A.
-2. Comprobar que tiene Node.js: en Terminal, `node -v`. Si no responde, que lo
-   instale desde https://nodejs.org (versión LTS).
-3. En Claude Desktop: Ajustes → Desarrollador → Editar configuración. Abrir
-   `claude_desktop_config.json` y pegar el bloque de la sección «Chat de
-   Claude Desktop» de `/admin/claude`. Si el fichero ya tiene otros servidores
-   en `mcpServers`, que añada solo la entrada `informes` dentro, sin duplicar
-   `mcpServers`.
-4. Cerrar Claude Desktop del todo (Cmd+Q) y volver a abrirlo.
-
-Avísale de que desde el chat podrá consultar espacios, dar accesos y publicar
-enlaces, pero **para subir ficheros** (HTML, PDF, vídeos) tiene que usar la
-pestaña Code (caso A), porque la subida se hace con `curl`.
-
-**C. claude.ai en el navegador o en el móvil.** Aquí no se puede conectar.
-Que use Claude Desktop (caso A o B), o el panel
-https://informes.myhappyforce.com/admin para hacerlo a mano.
-
-Cuando vuelva con la conexión hecha, comprueba con `list_clients` que
-funciona antes de seguir.
+Si da error de autorización después de haber conectado, que pulse
+«Desconectar» y «Conectar» de nuevo en Ajustes → Conectores. Nunca pidas
+tokens ni códigos en el chat.
 
 ## 1. Identifica el cliente
 
@@ -91,7 +57,15 @@ funciona antes de seguir.
 
 ## 2. Prepara cada fichero
 
-**Vídeo.** Comprueba formato y peso antes de subir:
+**Sin terminal (chat).** No puedes abrir ficheros locales ni comprimir. Si la
+persona adjunta el HTML o el PDF al chat, léelo para redactar la tarjeta. Si
+no, la sacarás de `check_upload` (paso 5), que devuelve los datos de un HTML
+extraídos del propio fichero. Para un **vídeo** o un PDF que no hayas podido
+leer, **pregunta en una línea de qué trata** antes de redactar la tarjeta. Si
+un vídeo pasa de 50 MB, la página de subida lo rechaza: propón comprimirlo en
+Claude Code.
+
+**Vídeo (con terminal).** Comprueba formato y peso antes de subir:
 
 ```bash
 ffprobe -v error -show_entries format=duration,size:stream=codec_name,width,height -of compact "VIDEO"
@@ -203,14 +177,28 @@ Con varios ficheros (p. ej. 3 vídeos), una sola tabla y una sola confirmación.
 
 ## 5. Sube y publica
 
-Para cada fichero:
+**Con terminal**, para cada fichero:
 
-1. `prepare_upload` con el nombre del fichero → devuelve `staged_path` y
+1. `prepare_upload` con `file_name` → devuelve `staged_path` y
    `upload_command`.
 2. Ejecuta el `upload_command` sustituyendo `<RUTA_DEL_FICHERO>` por la ruta
    local (entre comillas). Con vídeos dale un timeout amplio (≥ 5 min). Debe
    devolver un JSON con `"Key"`.
 3. `publish_report` con `client`, `staged_path` y los datos de la tarjeta.
+
+**Sin terminal (chat)**, para cada fichero:
+
+1. `prepare_upload` sin `file_name` → devuelve `upload_id` y
+   `upload_page_url`.
+2. Pasa el enlace a la persona: «Abre este enlace y arrastra el fichero; dime
+   cuando esté». Con varios ficheros, un enlace por fichero y di cuál es cuál.
+3. Cuando diga que ya está, `check_upload` con el `upload_id`. Si aún no ha
+   llegado, díselo y espera. Si ha llegado, usa su `staged_path` (y
+   `extracted_from_file`, si lo trae, para la tarjeta).
+4. `publish_report` con `client`, `staged_path` y los datos de la tarjeta.
+
+La confirmación del paso 4 va **antes de publicar**; en el chat puedes pedir
+que suban los ficheros primero y confirmar después con los datos ya a mano.
 
 Para un **enlace** (Drive, Canva…): `publish_report` con `external_url`, sin
 subida. Avisa de que la privacidad real depende de los permisos del enlace.
@@ -237,7 +225,9 @@ https://informes.myhappyforce.com/admin. Si te lo piden, da el enlace
 
 - **«Ya existe un informe con la URL…»**: pasa otro `slug`, o usa
   `update_report` si es una nueva versión del mismo informe.
-- **«No encuentro el fichero subido»**: la subida falló o pasaron más de 2 h.
-  Repite `prepare_upload` y la subida.
+- **«No encuentro el fichero subido»**: la subida falló o pasaron más de 2 h
+  (con curl). Repite `prepare_upload` y la subida.
+- **`check_upload` dice que no ha llegado**: la persona no terminó de subirlo
+  (o usó otro enlace). Que vuelva a la página y espere al «Fichero subido».
 - **La subida devuelve 413 / «maximum allowed size»**: el fichero supera
   50 MB. Comprímelo (paso 2).

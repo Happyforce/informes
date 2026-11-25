@@ -4,7 +4,9 @@ import { addMember } from "@/lib/members";
 import {
   ReportError,
   createReport,
-  createStagedUpload,
+  findStagedUpload,
+  newUploadId,
+  signUploadFor,
   slugify,
   updateReport,
   type ReportFields,
@@ -288,28 +290,77 @@ export const TOOLS: ToolDef[] = [
     name: "prepare_upload",
     title: "Preparar la subida de un fichero",
     description:
-      "Paso 1 para publicar un fichero (.html, .pdf, .mp4, .webm, .mov). Devuelve una URL firmada " +
-      "(válida 2 h) y el comando curl para subir el fichero local directamente al almacenamiento. " +
-      "Ejecuta el comando con la ruta real del fichero y, cuando termine bien, llama a publish_report " +
-      "(o update_report) con el staged_path devuelto.",
+      "Paso 1 para publicar un fichero (.html, .pdf, .mp4, .webm, .mov). Devuelve upload_id y un " +
+      "upload_page_url: una página donde la persona arrastra el fichero desde su navegador (úsala en " +
+      "el chat, sin terminal). Si pasas file_name y tienes terminal, devuelve también upload_command " +
+      "(curl) para subirlo tú. Después: check_upload con el upload_id para obtener el staged_path, y " +
+      "publish_report (o update_report) con ese staged_path.",
     inputSchema: {
       type: "object",
       properties: {
-        file_name: { type: "string", description: "Nombre del fichero local con extensión, p. ej. energymap-q3.mp4." },
+        file_name: {
+          type: "string",
+          description: "Nombre del fichero local con extensión (solo si vas a subirlo tú con curl).",
+        },
       },
-      required: ["file_name"],
     },
-    async run(args) {
-      const fileName = req(args, "file_name");
-      const up = await createStagedUpload(fileName);
+    async run(args, ctx) {
+      const uploadId = await newUploadId();
+      const pageUrl = `${ctx.origin}/subir/${uploadId}`;
+      const fileName = str(args, "file_name")?.trim();
+      if (!fileName) {
+        return {
+          upload_id: uploadId,
+          upload_page_url: pageUrl,
+          next_step:
+            "Pasa el enlace a la persona para que arrastre el fichero. Cuando diga que ya está, llama a " +
+            "check_upload con este upload_id.",
+        };
+      }
+      const up = await signUploadFor(uploadId, fileName);
       return {
+        upload_id: uploadId,
+        upload_page_url: pageUrl,
         staged_path: up.stagedPath,
         kind: up.kind,
         content_type: up.contentType,
         expires_in_seconds: up.expiresInSeconds,
-        upload_url: up.uploadUrl,
         upload_command: `curl --fail-with-body -sS -T "<RUTA_DEL_FICHERO>" -H "Content-Type: ${up.contentType}" "${up.uploadUrl}"`,
-        next_step: "Sustituye <RUTA_DEL_FICHERO>, ejecuta el comando y luego llama a publish_report con staged_path.",
+        next_step:
+          "Con terminal: sustituye <RUTA_DEL_FICHERO>, ejecuta el comando y llama a publish_report con " +
+          "staged_path. Sin terminal: pasa upload_page_url a la persona y luego usa check_upload.",
+      };
+    },
+  },
+  {
+    name: "check_upload",
+    title: "Comprobar una subida",
+    description:
+      "Comprueba si ya ha llegado el fichero de un upload_id (de prepare_upload). Si ha llegado, " +
+      "devuelve su staged_path (para publish_report/update_report), tipo y peso y, si es un HTML " +
+      "subido desde la página, los datos de tarjeta extraídos del propio informe.",
+    inputSchema: {
+      type: "object",
+      properties: { upload_id: { type: "string", description: "El upload_id de prepare_upload." } },
+      required: ["upload_id"],
+    },
+    annotations: { readOnlyHint: true },
+    async run(args) {
+      const f = await findStagedUpload(req(args, "upload_id"));
+      if (!f) {
+        return {
+          uploaded: false,
+          message: "Todavía no ha llegado ningún fichero. Pide a la persona que termine la subida en el enlace.",
+        };
+      }
+      return {
+        uploaded: true,
+        staged_path: f.stagedPath,
+        kind: f.kind,
+        size_mb: Math.round((f.sizeBytes / (1024 * 1024)) * 10) / 10,
+        ...(f.extracted && Object.keys(f.extracted).length
+          ? { extracted_from_file: f.extracted }
+          : {}),
       };
     },
   },
@@ -318,7 +369,7 @@ export const TOOLS: ToolDef[] = [
     title: "Publicar un informe",
     description:
       "Publica un informe nuevo en el espacio de un cliente (o en la landing pública si no se indica " +
-      "cliente). Contenido: staged_path de un fichero ya subido con prepare_upload, o external_url para " +
+      "cliente). Contenido: staged_path de un fichero ya subido (check_upload), o external_url para " +
       "un enlace. Publicar en un espacio lo hace visible para el cliente: confirma título, cliente y " +
       "fichero con el usuario antes.",
     inputSchema: {
@@ -328,7 +379,7 @@ export const TOOLS: ToolDef[] = [
           type: "string",
           description: "Slug (o nombre) del cliente. Omítelo SOLO para un informe público en la landing.",
         },
-        staged_path: { type: "string", description: "Devuelto por prepare_upload tras subir el fichero." },
+        staged_path: { type: "string", description: "Devuelto por check_upload (o por prepare_upload si subiste con curl)." },
         external_url: { type: "string", description: "En lugar de un fichero: enlace externo (Drive, etc.)." },
         slug: { type: "string", description: "URL del informe (/r/{slug}). Por defecto, a partir del título." },
         replace: {
@@ -417,15 +468,14 @@ export const TOOLS: ToolDef[] = [
   },
 ];
 
-export const SERVER_INSTRUCTIONS = `Plataforma de informes de Happyforce (informes.myhappyforce.com). Customer Advisory comparte aquí informes con clientes: cada cliente tiene un espacio privado (/c/{slug}) al que solo entran los emails con acceso (login por enlace mágico), y cada informe vive en /r/{slug}. Tipos: HTML autocontenido, PDF, vídeo (MP4) o enlace externo.
+export const SERVER_INSTRUCTIONS = `Plataforma de informes de Happyforce (informes.myhappyforce.com). Customer Advisory comparte aquí informes con clientes: cada cliente tiene un espacio privado (/c/{slug}) al que solo entran los emails con acceso, y cada informe vive en /r/{slug}. Tipos: HTML autocontenido, PDF, vídeo (MP4) o enlace externo. Si está disponible la skill «informes-happyforce», síguela.
 
 Publicar un fichero:
-1. prepare_upload con el nombre del fichero.
-2. Ejecuta en el terminal el upload_command sustituyendo la ruta local (necesitas un terminal: Claude Code o la pestaña Code de Claude Desktop).
-3. publish_report con el staged_path, el cliente y los datos de la tarjeta (título, descripción breve, badges, hasta 3 stats). Para un HTML, saca título, descripción y datos clave del propio fichero. Para un nuevo informe del mismo tipo que otro existente, imita su estilo de tarjeta.
-Para sustituir el fichero de un informe existente: prepare_upload + subida + update_report con staged_path.
+1. prepare_upload. En el chat (sin terminal): da a la persona el upload_page_url para que arrastre el fichero y espera a que diga que ya está. Con terminal (Claude Code): pasa file_name y ejecuta el upload_command con la ruta local.
+2. check_upload con el upload_id: devuelve el staged_path y, para un HTML subido desde la página, los datos de tarjeta extraídos del informe.
+3. publish_report con el staged_path, el cliente y los datos de la tarjeta (título, descripción breve, badges, hasta 3 stats que salgan del propio informe; nunca inventes cifras). Si el contenido no te consta (p. ej. un vídeo o PDF subido desde la página), pregunta de qué trata en una línea.
+Para sustituir el fichero de un informe existente: los mismos pasos y update_report con staged_path.
 
-Vídeos: mejor MP4 (H.264 + AAC) con faststart, por debajo de 50 MB. Si pesa más o es .mov, propón comprimirlo antes con ffmpeg:
-ffmpeg -i entrada.mov -c:v libx264 -crf 23 -preset medium -vf "scale=-2:'min(1080,ih)'" -c:a aac -b:a 128k -movflags +faststart salida.mp4
+Vídeos: MP4 (H.264 + AAC) de menos de 50 MB. Si pesa más, hay que comprimirlo antes (ffmpeg en Claude Code).
 
 Antes de cualquier acción que vea el cliente (publish_report en un espacio, add_member, que envía un email), resume lo que vas a hacer y espera el sí del usuario. Al terminar, da el enlace /r/{slug} y el del espacio. Quitar accesos y borrar informes o clientes no está disponible aquí: se hace en el panel /admin.`;

@@ -81,14 +81,6 @@ export default function TokenForm({ mcpUrl }: { mcpUrl: string }) {
       </p>
       <CopyBlock text={claudeCode} />
 
-      <h3 className="setup-title">Chat de Claude Desktop</h3>
-      <p className="hint">
-        En Claude Desktop: Ajustes → Desarrollador → Editar configuración, y
-        añade esto dentro de <code>claude_desktop_config.json</code> (necesita
-        Node.js instalado). Desde el chat puedes consultar espacios, dar
-        accesos y publicar enlaces; para subir ficheros usa Claude Code.
-      </p>
-      <CopyBlock text={desktopJson} />
     </>
   );
 }
