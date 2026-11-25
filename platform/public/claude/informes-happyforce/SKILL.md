@@ -78,6 +78,49 @@ hero o la introducción, y los datos clave en las cifras grandes del hero.
 
 **PDF.** Lee las primeras páginas para sacar título, resumen y cifras.
 
+**Artefacto de Claude** (un informe hecho como artefacto o página en Claude).
+Es un HTML, así que se publica como HTML, pero antes hay que conseguir el
+fichero y asegurarse de que funciona fuera de Claude.
+
+1. **Consigue el HTML.**
+   - Si ya es un `.html` local, úsalo.
+   - Si es un enlace `claude.ai/artifact/…` o `claude.ai/code/artifact/…`, léelo
+     con la herramienta **Artifact** (`action: "read"`). Si la persona es la
+     dueña, devuelve el HTML completo y dice en qué fichero lo ha guardado. Si
+     devuelve solo un resumen, el artefacto es de otra persona: pide que lo
+     suba su autor o que te pase el `.html`. **Nunca reconstruyas un informe a
+     partir del resumen.**
+   - Si no tienes la herramienta Artifact (por ejemplo, el artefacto se hizo en
+     el chat de claude.ai), pide que lo descarguen desde el menú del artefacto
+     (Descargar) y te pasen la ruta.
+   - Si lo descargado es un `.jsx` (artefacto React del chat), no es una página:
+     pide que lo exporten como HTML, o conviértelo tú en un HTML autocontenido
+     (React y ReactDOM desde un CDN) y compruébalo en el navegador antes de
+     seguir.
+2. **Comprueba que no depende de Claude:**
+
+   ```bash
+   grep -noE 'window\.claude[.a-zA-Z]*|https://claude\.ai/[^"'"'"' )]*|(src|href)="(\./|/[a-z]|[a-zA-Z0-9_-]+\.(js|css|png|jpe?g|svg|webp|gif|json|csv))[^"]*"|fetch\(.[^h][^)]*\)' "INFORME.html"
+   ```
+
+   - `window.claude…` (datos guardados, estado compartido, comentarios,
+     preguntas a Claude): fuera de Claude **no funciona**. Explica qué parte
+     dejará de funcionar y propón quitarla o fijar sus datos en el HTML. No lo
+     publiques sin un sí.
+   - URLs de `claude.ai` (imágenes o ficheros del artefacto) o rutas relativas
+     (`./datos.json`, `estilos.css`, `logo.png`, `fetch('datos.json')`): el
+     cliente no podrá cargarlas.
+     Descárgalas (con Artifact `read` y `path`, o pídeselas a la persona) y
+     mételas en el HTML: imágenes como `data:` en base64, y CSS, JS y datos
+     inline.
+   - Las librerías y fuentes de CDNs públicos (cdnjs, jsdelivr, unpkg, Google
+     Fonts) funcionan tal cual.
+3. **Ábrelo en local** si tienes navegador, para ver que carga entero y que los
+   gráficos se pintan. Después sigue como con cualquier HTML: la tarjeta sale
+   del propio contenido.
+4. Cuando el artefacto se actualice, sube la nueva versión con `update_report`
+   (mismo slug), no como informe nuevo.
+
 ## 3. Redacta la tarjeta
 
 - **title**: el del informe, ≤ 70 caracteres. Para una serie, nómbralos igual
