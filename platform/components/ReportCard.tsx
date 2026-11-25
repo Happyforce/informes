@@ -18,9 +18,11 @@ export default function ReportCard({
   const cta =
     report.kind === "pdf"
       ? { label: "Ver PDF", icon: "→", blank: true }
-      : report.kind === "link"
-        ? { label: "Abrir informe", icon: "↗", blank: true }
-        : { label: "Leer informe", icon: "→", blank: false };
+      : report.kind === "video"
+        ? { label: "Ver vídeo", icon: "▶", blank: false }
+        : report.kind === "link"
+          ? { label: "Abrir informe", icon: "↗", blank: true }
+          : { label: "Leer informe", icon: "→", blank: false };
 
   return (
     <article className="card">
@@ -28,7 +30,11 @@ export default function ReportCard({
         <div className="card-badges">
           {report.kind !== "html" && (
             <span className="badge kind-badge">
-              {report.kind === "pdf" ? "PDF" : "Enlace ↗"}
+              {report.kind === "pdf"
+                ? "PDF"
+                : report.kind === "video"
+                  ? "▶ Vídeo"
+                  : "Enlace ↗"}
             </span>
           )}
           {report.badges.map((b) => (

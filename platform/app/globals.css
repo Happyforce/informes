@@ -667,3 +667,17 @@ footer { background: var(--bg-dark); color: var(--ink-light); padding: 40px 24px
   padding: 11px 14px; border-radius: var(--radius-sm);
 }
 .kind-badge { background: rgba(0,0,0,.32); border-color: rgba(255,255,255,.35); }
+
+/* Upload progress (direct-to-Storage uploads) */
+.upload-progress { height: 6px; border-radius: var(--radius-full); background: var(--border-light); overflow: hidden; margin-top: 10px; max-width: 360px; }
+.upload-progress > div { height: 100%; background: var(--accent); transition: width .2s ease; }
+
+/* Claude connection page */
+.copy-block { position: relative; margin: 8px 0 18px; }
+.copy-block pre { background: var(--bg-dark); color: #e5e7eb; border-radius: var(--radius-sm); padding: 14px 92px 14px 16px; font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-all; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.copy-btn { position: absolute; top: 8px; right: 8px; padding: 6px 12px !important; font-size: 12px !important; background: #1f2937 !important; color: #e5e7eb !important; border: 1px solid #374151; border-radius: 6px; }
+.copy-btn:hover { color: #fff !important; border-color: var(--accent); }
+.token-reveal { background: var(--accent-soft); border: 1px solid #fed7aa; border-radius: var(--radius-sm); padding: 14px 16px 2px; margin: 12px 0 20px; font-size: 14px; }
+.setup-title { font-size: 15px; font-weight: 700; margin-top: 22px; }
+.capabilities { margin: 0 0 8px 20px; font-size: 14.5px; line-height: 1.8; color: var(--ink-secondary); }
+.admin-head-actions { margin-top: 12px; }

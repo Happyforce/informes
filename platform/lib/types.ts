@@ -1,5 +1,5 @@
 export type Visibility = "public" | "client";
-export type ReportKind = "html" | "pdf" | "link";
+export type ReportKind = "html" | "pdf" | "video" | "link";
 
 export interface Client {
   id: string;
@@ -41,6 +41,7 @@ export interface Report {
   external_url: string | null;
   published_at: string;
   created_at: string;
+  created_by?: string | null;
 }
 
 export const COVER_OPTIONS = [
