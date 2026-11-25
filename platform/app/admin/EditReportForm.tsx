@@ -1,8 +1,17 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useMemo, useRef, useState } from "react";
 import ReportCard from "@/components/ReportCard";
-import { updateReportAction } from "./actions";
+import { updateReportAction, type UploadState } from "./actions";
+import {
+  FILE_ACCEPT,
+  SOFT_MAX_BYTES,
+  fileTypeFor,
+  formatBytes,
+  kindLabel,
+  type FileKind,
+} from "@/lib/report-files";
+import { uploadToStaging } from "@/lib/upload-client";
 import { COVER_OPTIONS, type Client, type Report } from "@/lib/types";
 
 /**
@@ -20,8 +29,10 @@ export default function EditReportForm({
   const [source, setSource] = useState<"file" | "link">(
     report.kind === "link" ? "link" : "file"
   );
-  const [newFileName, setNewFileName] = useState("");
-  const [newFileIsPdf, setNewFileIsPdf] = useState<boolean | null>(null);
+  const [newFile, setNewFile] = useState<File | null>(null);
+  const [newFileKind, setNewFileKind] = useState<FileKind | null>(null);
+  const [fileError, setFileError] = useState("");
+  const [progress, setProgress] = useState<number | null>(null);
   const [externalUrl, setExternalUrl] = useState(report.external_url ?? "");
 
   const [title, setTitle] = useState(report.title);
@@ -39,18 +50,36 @@ export default function EditReportForm({
   const [canvaUrl, setCanvaUrl] = useState(report.canva_url ?? "");
   const [clientId, setClientId] = useState(report.client_id ?? "");
 
-  const [state, formAction, isPending] = useActionState(updateReportAction, null);
+  const sourceRef = useRef(source);
+  sourceRef.current = source;
+  const fileRef = useRef(newFile);
+  fileRef.current = newFile;
+
+  const [state, formAction, isPending] = useActionState(
+    async (prev: UploadState, formData: FormData): Promise<UploadState> => {
+      const f = fileRef.current;
+      if (sourceRef.current === "file" && f) {
+        try {
+          setProgress(0);
+          formData.set("staged_path", await uploadToStaging(f, setProgress));
+        } catch (e) {
+          setProgress(null);
+          return { error: e instanceof Error ? e.message : "La subida falló." };
+        }
+      }
+      setProgress(1);
+      const result = await updateReportAction(prev, formData);
+      setProgress(null);
+      return result;
+    },
+    null
+  );
 
   const kind =
     source === "link"
       ? "link"
-      : newFileIsPdf !== null
-        ? newFileIsPdf
-          ? "pdf"
-          : "html"
-        : report.kind === "pdf"
-          ? "pdf"
-          : "html";
+      : newFileKind ?? (report.kind === "link" ? "html" : report.kind);
+  const newFileName = newFile?.name ?? "";
 
   const selectedSlug = clients.find((c) => c.id === clientId)?.slug ?? "";
 
@@ -76,7 +105,8 @@ export default function EditReportForm({
   return (
     <form action={formAction} className="admin-form upload-form" aria-busy={isPending}>
       <input type="hidden" name="id" value={report.id} />
-      <input type="hidden" name="kind" value={kind} />
+      <input type="hidden" name="source" value={source} />
+      <input type="hidden" name="current_kind" value={report.kind} />
       <input type="hidden" name="client_slug" value={selectedSlug} />
 
       <p className="hint" style={{ marginBottom: 12 }}>
@@ -89,7 +119,7 @@ export default function EditReportForm({
           className={`source-tab${source === "file" ? " active" : ""}`}
           onClick={() => setSource("file")}
         >
-          📄 Archivo (HTML o PDF)
+          📄 Archivo (HTML, PDF o vídeo)
         </button>
         <button
           type="button"
@@ -107,29 +137,44 @@ export default function EditReportForm({
               ? "Sube el fichero del informe"
               : "Reemplazar el fichero (opcional)"}
           </label>
+          {/* No name: the file is uploaded to Storage by the action, never posted. */}
           <input
             className="input"
             type="file"
-            name="file"
-            accept=".html,text/html,.pdf,application/pdf"
+            accept={FILE_ACCEPT}
             onChange={(e) => {
-              const f = e.target.files?.[0];
-              setNewFileName(f?.name ?? "");
-              setNewFileIsPdf(
-                f
-                  ? f.name.toLowerCase().endsWith(".pdf") ||
-                      f.type === "application/pdf"
-                  : null
-              );
+              const f = e.target.files?.[0] ?? null;
+              const type = f ? fileTypeFor(f.name) : null;
+              if (f && !type) {
+                setFileError(`«${f.name}» no es un tipo admitido (.html, .pdf, .mp4, .webm o .mov).`);
+                setNewFile(null);
+                setNewFileKind(null);
+                return;
+              }
+              setFileError("");
+              setNewFile(f);
+              setNewFileKind(type?.kind ?? null);
             }}
           />
           <p className="hint">
-            {newFileName
-              ? `Se usará: ${newFileName}`
+            {newFile
+              ? `Se usará: ${newFileName} (${formatBytes(newFile.size)})`
               : report.kind === "link"
-                ? "Este informe era un enlace; sube un HTML o PDF para convertirlo en fichero."
-                : `Fichero actual: ${report.slug}.${report.kind === "pdf" ? "pdf" : "html"}. Déjalo vacío para conservarlo.`}
+                ? "Este informe era un enlace; sube un HTML, PDF o vídeo para convertirlo en fichero."
+                : `Fichero actual: ${kindLabel(report.kind)}. Déjalo vacío para conservarlo.`}
           </p>
+          {fileError && (
+            <div className="form-error" role="alert">
+              ⚠ {fileError}
+            </div>
+          )}
+          {newFile && newFile.size > SOFT_MAX_BYTES && (
+            <div className="warn-note">
+              ⚠ El fichero pesa {formatBytes(newFile.size)}. El almacenamiento
+              suele admitir hasta 50 MB por fichero: si la subida falla,
+              comprímelo.
+            </div>
+          )}
         </div>
       ) : (
         <div className="field">
@@ -309,12 +354,20 @@ export default function EditReportForm({
       <button className="btn btn-accent" disabled={isPending}>
         {isPending ? (
           <>
-            <span className="spinner" aria-hidden="true" /> Guardando cambios…
+            <span className="spinner" aria-hidden="true" />{" "}
+            {progress !== null && progress < 1
+              ? `Subiendo fichero… ${Math.round(progress * 100)} %`
+              : "Guardando cambios…"}
           </>
         ) : (
           "Guardar cambios"
         )}
       </button>
+      {isPending && progress !== null && progress < 1 && (
+        <div className="upload-progress" aria-hidden>
+          <div style={{ width: `${Math.round(progress * 100)}%` }} />
+        </div>
+      )}
     </form>
   );
 }

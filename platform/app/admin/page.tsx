@@ -34,6 +34,11 @@ export default async function AdminPage() {
         <p>
           Espacios de cliente, miembros con acceso e informes publicados.
         </p>
+        <div className="admin-head-actions">
+          <Link href="/admin/claude" className="btn btn-secondary">
+            ✳ Conectar con Claude
+          </Link>
+        </div>
       </header>
 
       {/* ─── Clients ─── */}

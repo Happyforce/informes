@@ -2,8 +2,10 @@
 const nextConfig = {
   experimental: {
     serverActions: {
-      // report HTML files are ~0.3–2 MB
-      bodySizeLimit: "10mb",
+      // Report files no longer go through server actions: the browser uploads
+      // them straight to Supabase Storage with a signed URL (Vercel caps
+      // function request bodies at 4.5 MB anyway). Actions only carry metadata.
+      bodySizeLimit: "1mb",
     },
   },
   async redirects() {

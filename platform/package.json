@@ -6,7 +6,8 @@
     "dev": "next dev --port 4600",
     "build": "next build",
     "start": "next start",
-    "migrate-reports": "node scripts/migrate-existing-reports.mjs"
+    "migrate-reports": "node scripts/migrate-existing-reports.mjs",
+    "package-skill": "cd public/claude && rm -f informes-happyforce.zip && zip -qr informes-happyforce.zip informes-happyforce"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

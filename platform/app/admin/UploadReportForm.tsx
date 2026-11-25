@@ -2,8 +2,16 @@
 
 import { useActionState, useMemo, useRef, useState } from "react";
 import ReportCard from "@/components/ReportCard";
-import { uploadReportAction } from "./actions";
+import { uploadReportAction, type UploadState } from "./actions";
 import { extractReportMeta } from "@/lib/extract-report-meta";
+import {
+  FILE_ACCEPT,
+  SOFT_MAX_BYTES,
+  fileTypeFor,
+  formatBytes,
+  type FileKind,
+} from "@/lib/report-files";
+import { uploadToStaging } from "@/lib/upload-client";
 import { COVER_OPTIONS, type Client, type Report } from "@/lib/types";
 
 function today() {
@@ -11,8 +19,10 @@ function today() {
 }
 
 /**
- * Upload form. Three kinds of report:
- *  - file → HTML (auto-fills metadata + live preview) or PDF (manual)
+ * Upload form. Kinds of report:
+ *  - file → HTML (auto-fills metadata + live preview), PDF or video
+ *    (metadata manual). The file goes straight from the browser to Storage
+ *    (signed URL) before the metadata is submitted to the server action.
  *  - link → external URL (Drive, etc.), metadata manual
  */
 export default function UploadReportForm({
@@ -23,8 +33,10 @@ export default function UploadReportForm({
   fixedClient?: Client;
 }) {
   const [source, setSource] = useState<"file" | "link">("file");
-  const [fileName, setFileName] = useState("");
-  const [fileIsPdf, setFileIsPdf] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [fileKind, setFileKind] = useState<FileKind | null>(null);
+  const [fileError, setFileError] = useState("");
+  const [progress, setProgress] = useState<number | null>(null);
   const [externalUrl, setExternalUrl] = useState("");
   const [autofilled, setAutofilled] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -44,9 +56,35 @@ export default function UploadReportForm({
   const [canvaUrl, setCanvaUrl] = useState("");
   const [clientId, setClientId] = useState(fixedClient?.id ?? "");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [state, formAction, isPending] = useActionState(uploadReportAction, null);
+  // Refs so the action below always sees the current selection.
+  const sourceRef = useRef(source);
+  sourceRef.current = source;
+  const fileRef = useRef(file);
+  fileRef.current = file;
 
-  const kind = source === "link" ? "link" : fileIsPdf ? "pdf" : "html";
+  const [state, formAction, isPending] = useActionState(
+    async (prev: UploadState, formData: FormData): Promise<UploadState> => {
+      if (sourceRef.current === "file") {
+        const f = fileRef.current;
+        if (!f) return { error: "Falta el fichero del informe." };
+        try {
+          setProgress(0);
+          formData.set("staged_path", await uploadToStaging(f, setProgress));
+        } catch (e) {
+          setProgress(null);
+          return { error: e instanceof Error ? e.message : "La subida falló." };
+        }
+      }
+      setProgress(1);
+      const result = await uploadReportAction(prev, formData);
+      setProgress(null);
+      return result;
+    },
+    null
+  );
+
+  const kind = source === "link" ? "link" : fileKind ?? "html";
+  const fileName = file?.name ?? "";
   const selectedSlug = fixedClient
     ? fixedClient.slug
     : clients.find((c) => c.id === clientId)?.slug ?? "";
@@ -55,14 +93,18 @@ export default function UploadReportForm({
 
   async function onFile(file: File | undefined) {
     if (!file) return;
-    const isPdf =
-      file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf";
-    setFileIsPdf(isPdf);
-    setFileName(file.name);
+    const type = fileTypeFor(file.name);
+    if (!type) {
+      setFileError(`«${file.name}» no es un tipo admitido (.html, .pdf, .mp4, .webm o .mov).`);
+      return;
+    }
+    setFileError("");
+    setFile(file);
+    setFileKind(type.kind);
 
-    if (isPdf) {
-      // No structured metadata in a PDF — seed the title from the filename.
-      if (!title) setTitle(file.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " "));
+    if (type.kind !== "html") {
+      // No structured metadata in a PDF/video — seed the title from the filename.
+      if (!title) setTitle(file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " "));
       setAutofilled(false);
       return;
     }
@@ -110,7 +152,7 @@ export default function UploadReportForm({
 
   return (
     <form action={formAction} className="admin-form upload-form" aria-busy={isPending}>
-      <input type="hidden" name="kind" value={kind} />
+      <input type="hidden" name="source" value={source} />
 
       {/* ─── Origen ─── */}
       <div className="source-tabs">
@@ -119,7 +161,7 @@ export default function UploadReportForm({
           className={`source-tab${source === "file" ? " active" : ""}`}
           onClick={() => setSource("file")}
         >
-          📄 Archivo (HTML o PDF)
+          📄 Archivo (HTML, PDF o vídeo)
         </button>
         <button
           type="button"
@@ -147,24 +189,27 @@ export default function UploadReportForm({
             onFile(e.dataTransfer.files?.[0]);
           }}
         >
+          {/* No name: the file is uploaded to Storage by the action, never posted. */}
           <input
             ref={fileInputRef}
             type="file"
-            name="file"
-            accept=".html,text/html,.pdf,application/pdf"
+            accept={FILE_ACCEPT}
             hidden
             onChange={(e) => onFile(e.target.files?.[0])}
           />
-          <span className="dropzone-icon">{hasFile ? (fileIsPdf ? "📕" : "📄") : "⬆️"}</span>
+          <span className="dropzone-icon">
+            {hasFile ? (fileKind === "pdf" ? "📕" : fileKind === "video" ? "🎬" : "📄") : "⬆️"}
+          </span>
           <span className="dropzone-text">
             {hasFile ? (
               <>
-                <b>{fileName}</b> — haz clic para cambiarlo
+                <b>{fileName}</b> ({formatBytes(file!.size)}) — haz clic para
+                cambiarlo
               </>
             ) : (
               <>
-                Arrastra el <b>.html</b> o <b>.pdf</b> del informe, o haz clic
-                para elegirlo
+                Arrastra el <b>.html</b>, <b>.pdf</b> o <b>vídeo</b> (.mp4) del
+                informe, o haz clic para elegirlo
               </>
             )}
           </span>
@@ -183,6 +228,19 @@ export default function UploadReportForm({
           <p className="hint">
             El informe se abrirá en esta URL (Google Drive, Notion, etc.).
           </p>
+        </div>
+      )}
+
+      {fileError && (
+        <div className="form-error" role="alert">
+          ⚠ {fileError}
+        </div>
+      )}
+      {source === "file" && file && file.size > SOFT_MAX_BYTES && (
+        <div className="warn-note">
+          ⚠ El fichero pesa {formatBytes(file.size)}. El almacenamiento suele
+          admitir hasta 50 MB por fichero: si la subida falla, comprímelo
+          (para vídeo, MP4 H.264 a 1080p suele bastar).
         </div>
       )}
 
@@ -382,13 +440,20 @@ export default function UploadReportForm({
           <button className="btn btn-accent" disabled={isPending}>
             {isPending ? (
               <>
-                <span className="spinner" aria-hidden="true" /> Publicando
-                informe…
+                <span className="spinner" aria-hidden="true" />{" "}
+                {progress !== null && progress < 1
+                  ? `Subiendo fichero… ${Math.round(progress * 100)} %`
+                  : "Publicando informe…"}
               </>
             ) : (
               "Publicar informe"
             )}
           </button>
+          {isPending && progress !== null && progress < 1 && (
+            <div className="upload-progress" aria-hidden>
+              <div style={{ width: `${Math.round(progress * 100)}%` }} />
+            </div>
+          )}
           {isPending && (
             <p className="hint" style={{ marginTop: 4 }}>
               Publicando el informe, no cierres esta ventana…
