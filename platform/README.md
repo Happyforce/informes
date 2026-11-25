@@ -21,7 +21,7 @@ por cliente (magic link) + panel de administración para Customer Advisory.
 - **Informes públicos** (`visibility=public`, sin cliente): salen en la landing `/`.
 - **Informes de cliente**: solo los ven los emails dados de alta en
   `client_members` (y cualquier cuenta `@myhappyforce.com`, que es admin).
-- **Auth**: magic link por email (Supabase Auth, sin contraseñas). Tras el login,
+- **Auth**: código o enlace por email (Supabase Auth, sin contraseñas). Tras el login,
   cada uno aterriza donde le toca: admin → `/admin`, miembro → `/c/{slug}`,
   email sin espacio → `/sin-acceso`.
 
@@ -36,27 +36,47 @@ por cliente (magic link) + panel de administración para Customer Advisory.
 | `/r/{slug}` | según informe | Visor: sirve el HTML desde Storage |
 | `/admin` | @myhappyforce.com | Clientes, informes públicos, subida |
 | `/admin/{slug}` | @myhappyforce.com | Detalle de cliente: miembros + informes |
-| `/admin/claude` | @myhappyforce.com | Tokens personales + instrucciones para conectar Claude |
-| `/api/mcp` | token `hfi_…` | Servidor MCP para Claude Code / Desktop |
+| `/admin/claude` | @myhappyforce.com | Conexiones con Claude, instrucciones y tokens personales |
+| `/api/mcp` | OAuth (`hfo_…`) o token `hfi_…` | Servidor MCP del conector de Claude |
+| `/oauth/authorize` | @myhappyforce.com | Autorizar el conector (código por email + Permitir) |
+| `/subir/{id}` | @myhappyforce.com | Subida de ficheros pedida desde el chat de Claude |
 
-## Claude (servidor MCP)
+## Claude (conector MCP)
 
 `/api/mcp` es un servidor MCP (Streamable HTTP, sin estado, respuestas JSON)
-para que Customer gestione los espacios desde Claude. Cada persona crea su
-token en `/admin/claude` (se guarda solo el hash; actúa en su nombre y queda
-en `reports.created_by`) y lo conecta con:
+para que Customer gestione los espacios desde Claude.
 
-```bash
-claude mcp add --transport http --scope user informes https://informes.myhappyforce.com/api/mcp --header "Authorization: Bearer hfi_…"
-```
+**Conector de la organización (lo normal).** El owner lo añade una vez en
+claude.ai (Configuración de la organización → Conectores → Añadir conector
+personalizado, URL `https://informes.myhappyforce.com/api/mcp`). Cada persona
+pulsa «Conectar», entra con su email @myhappyforce.com y un **código por
+email** en la misma ventana, y pulsa «Permitir». Por debajo es OAuth 2.1:
+
+- Descubrimiento: `/.well-known/oauth-protected-resource` y
+  `/.well-known/oauth-authorization-server` (rewrites en `next.config.mjs`), y
+  `WWW-Authenticate` en el 401 de `/api/mcp`.
+- Registro dinámico `/api/oauth/register` (solo callbacks de Claude y
+  loopback), autorización `/oauth/authorize` (login con código + consentimiento),
+  token `/api/oauth/token` (PKCE S256; access 1 h, refresh 90 días rotativo).
+- Tablas `oauth_clients`, `oauth_codes`, `oauth_grants` (solo hashes). Cada
+  persona ve y desconecta sus conexiones en `/admin/claude`.
+
+**Token personal (avanzado).** `hfi_…` creado en `/admin/claude`, para Claude
+Code sin cuenta de empresa (`claude mcp add … --header "Authorization: Bearer …"`).
 
 Herramientas: `list_clients`, `get_client`, `list_public_reports`,
-`create_client`, `add_member`, `prepare_upload`, `publish_report`,
-`update_report`. Subir un fichero = `prepare_upload` → `curl -T` a la URL
-firmada → `publish_report`/`update_report` con el `staged_path`. Lo
-destructivo (quitar accesos, borrar informes o clientes) solo desde el panel.
-Las instrucciones del flujo viajan en la respuesta `initialize`
-(`lib/mcp/tools.ts`).
+`create_client`, `add_member`, `prepare_upload`, `check_upload`,
+`publish_report`, `update_report`. Subir un fichero:
+- **Chat (sin terminal):** `prepare_upload` da un enlace `/subir/{id}` donde la
+  persona arrastra el fichero (va directo a Storage; para HTML la página extrae
+  los datos de la tarjeta y los guarda como metadatos del objeto) →
+  `check_upload` → `publish_report`.
+- **Claude Code:** `prepare_upload` con `file_name` → `curl -T` a la URL firmada
+  → `publish_report`.
+
+Lo destructivo (quitar accesos, borrar informes o clientes) solo desde el
+panel. La skill `informes-happyforce` (`public/claude/`) guía el flujo; tras
+editarla, `npm run package-skill`.
 
 ## Puesta en marcha (producción)
 

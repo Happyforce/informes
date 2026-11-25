@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { addMember, inviteToAuth } from "@/lib/members";
 import { createApiToken, revokeApiToken } from "@/lib/api-tokens";
+import { revokeConnection } from "@/lib/oauth";
 import type { ReportStat } from "@/lib/types";
 import {
   ReportError,
@@ -238,5 +239,11 @@ export async function createTokenAction(
 export async function revokeTokenAction(formData: FormData) {
   const user = await requireAdmin();
   await revokeApiToken(user.email!, String(formData.get("id")));
+  revalidatePath("/admin/claude");
+}
+
+export async function revokeConnectionAction(formData: FormData) {
+  const user = await requireAdmin();
+  await revokeConnection(user.email!, String(formData.get("id")));
   revalidatePath("/admin/claude");
 }

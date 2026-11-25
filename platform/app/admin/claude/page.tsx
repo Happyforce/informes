@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { listApiTokens } from "@/lib/api-tokens";
-import { revokeTokenAction } from "../actions";
+import { listConnections } from "@/lib/oauth";
+import { revokeConnectionAction, revokeTokenAction } from "../actions";
 import TokenForm, { CopyBlock } from "./TokenForm";
 
 const SITE_URL =
@@ -20,10 +21,12 @@ function fmt(iso: string | null) {
 
 export default async function ClaudePage() {
   const user = await requireAdmin();
-  const tokens = await listApiTokens(user.email!);
+  const [connections, tokens] = await Promise.all([
+    listConnections(user.email!),
+    listApiTokens(user.email!),
+  ]);
   const base = SITE_URL.replace(/\/$/, "");
   const mcpUrl = `${base}/api/mcp`;
-  const skillInstall = `mkdir -p ~/.claude/skills/informes-happyforce && curl -fsSL ${base}/claude/informes-happyforce/SKILL.md -o ~/.claude/skills/informes-happyforce/SKILL.md`;
 
   return (
     <>
@@ -41,37 +44,54 @@ export default async function ClaudePage() {
 
       <section className="admin-section">
         <div className="admin-section-head">
-          <h2>Tus tokens ({tokens.length})</h2>
+          <h2>Cómo conectarte</h2>
         </div>
-        <p className="hint" style={{ marginBottom: 14 }}>
-          Cada token actúa en tu nombre con permisos de administrador, y todo lo
-          que publique queda registrado a tu nombre. Créalo para cada ordenador
-          y revócalo si lo pierdes o ya no lo usas.
+        <ol className="steps">
+          <li>
+            En Claude (Desktop, web o móvil): <b>Ajustes → Conectores</b>,
+            busca <b>Informes Happyforce</b> y pulsa <b>Conectar</b>.
+          </li>
+          <li>
+            Se abre esta web: escribe tu email @myhappyforce.com y el código
+            que te llega por correo.
+          </li>
+          <li>
+            Pulsa <b>Permitir</b>. Listo: no tendrás que repetirlo. También
+            funciona en Claude Code con tu cuenta de la empresa.
+          </li>
+        </ol>
+        <p className="hint">
+          Desde el chat, Claude te dará un enlace para arrastrar los ficheros
+          (vídeos, PDF, HTML). En Claude Code los sube él directamente.
         </p>
-        {tokens.length > 0 && (
+      </section>
+
+      <section className="admin-section">
+        <div className="admin-section-head">
+          <h2>Tus conexiones ({connections.length})</h2>
+        </div>
+        {connections.length === 0 ? (
+          <p className="hint">Todavía no has conectado Claude.</p>
+        ) : (
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Nombre</th>
-                <th>Token</th>
-                <th>Creado</th>
+                <th>Aplicación</th>
+                <th>Conectado</th>
                 <th>Último uso</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {tokens.map((t) => (
-                <tr key={t.id}>
-                  <td>{t.name}</td>
-                  <td>
-                    <code>{t.token_prefix}…</code>
-                  </td>
-                  <td>{fmt(t.created_at)}</td>
-                  <td>{fmt(t.last_used_at)}</td>
+              {connections.map((c) => (
+                <tr key={c.id}>
+                  <td>{c.client_name}</td>
+                  <td>{fmt(c.created_at)}</td>
+                  <td>{fmt(c.last_used_at)}</td>
                   <td style={{ width: 1 }}>
-                    <form action={revokeTokenAction}>
-                      <input type="hidden" name="id" value={t.id} />
-                      <button className="btn-danger-link">Revocar</button>
+                    <form action={revokeConnectionAction}>
+                      <input type="hidden" name="id" value={c.id} />
+                      <button className="btn-danger-link">Desconectar</button>
                     </form>
                   </td>
                 </tr>
@@ -83,45 +103,65 @@ export default async function ClaudePage() {
 
       <section className="admin-section">
         <div className="admin-section-head">
-          <h2>Configurar Claude</h2>
-        </div>
-        <TokenForm mcpUrl={mcpUrl} />
-      </section>
-
-      <section className="admin-section">
-        <div className="admin-section-head">
-          <h2>Skill «informes-happyforce»</h2>
+          <h2>Para el owner de la organización (una sola vez)</h2>
         </div>
         <p className="hint" style={{ marginBottom: 6 }}>
-          Enseña a Claude el proceso completo: revisar y comprimir vídeos,
-          redactar la tarjeta con el estilo de cada cliente, pedir
-          confirmación antes de publicar y dar los enlaces al final. Se activa
-          sola cuando pides subir o publicar algo en un espacio de cliente.
+          En claude.ai: <b>Configuración de la organización → Conectores →
+          Añadir conector personalizado</b>. Nombre: <b>Informes Happyforce</b>.
+          URL:
         </p>
-        <h3 className="setup-title">Claude Code</h3>
-        <CopyBlock text={skillInstall} />
-        <h3 className="setup-title">Claude Desktop (chat)</h3>
+        <CopyBlock text={mcpUrl} />
         <p className="hint">
-          Descarga <a href="/claude/informes-happyforce.zip">informes-happyforce.zip</a>{" "}
-          y súbelo en Ajustes → Capacidades → Skills. Un owner de la
-          organización puede subirlo una vez para todo el equipo.
+          No hace falta client ID ni secreto: cada persona se identifica con su
+          email al conectar. La skill <b>informes-happyforce</b> también se
+          sube a la organización (Configuración → Capacidades → Skills); la
+          versión actual está en{" "}
+          <a href="/claude/informes-happyforce.zip">informes-happyforce.zip</a>.
         </p>
       </section>
 
       <section className="admin-section">
-        <div className="admin-section-head">
-          <h2>Qué puede hacer Claude</h2>
-        </div>
-        <ul className="capabilities">
-          <li>Ver clientes, quién tiene acceso a cada espacio y qué informes tiene.</li>
-          <li>Crear espacios de cliente y dar acceso a personas (les llega el email de Happyforce).</li>
-          <li>Subir informes HTML, PDF y vídeos (desde Claude Code) o publicar enlaces externos.</li>
-          <li>Editar la tarjeta de un informe o sustituir su fichero.</li>
-        </ul>
-        <p className="hint">
-          Quitar accesos y eliminar informes o clientes sigue haciéndose desde
-          este panel.
-        </p>
+        <details>
+          <summary className="advanced-summary">
+            Avanzado: token personal ({tokens.length})
+          </summary>
+          <p className="hint" style={{ margin: "12px 0 14px" }}>
+            Solo si usas Claude Code sin la cuenta de la empresa. Cada token
+            actúa en tu nombre; revócalo si lo pierdes.
+          </p>
+          {tokens.length > 0 && (
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Token</th>
+                  <th>Creado</th>
+                  <th>Último uso</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {tokens.map((t) => (
+                  <tr key={t.id}>
+                    <td>{t.name}</td>
+                    <td>
+                      <code>{t.token_prefix}…</code>
+                    </td>
+                    <td>{fmt(t.created_at)}</td>
+                    <td>{fmt(t.last_used_at)}</td>
+                    <td style={{ width: 1 }}>
+                      <form action={revokeTokenAction}>
+                        <input type="hidden" name="id" value={t.id} />
+                        <button className="btn-danger-link">Revocar</button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <TokenForm mcpUrl={mcpUrl} />
+        </details>
       </section>
     </>
   );

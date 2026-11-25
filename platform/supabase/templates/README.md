@@ -1,7 +1,9 @@
 # Plantillas de email de Supabase Auth
 
-Estos HTML son las plantillas branded (logo Happyforce, naranja `#f26522`, copy en
-español) que hay que pegar en el dashboard de Supabase. El repo es la fuente de
+Estos HTML son las plantillas branded (incluyen el botón **y** el código de
+acceso `{{ .Token }}`, que se teclea en `/login` y en la autorización del
+conector de Claude; la longitud del código es `mailer_otp_length = 6`) — logo Happyforce, naranja `#f26522`, copy en
+español — que hay que pegar en el dashboard de Supabase. El repo es la fuente de
 verdad; Supabase no las lee solo, hay que copiarlas a mano cuando cambien.
 
 ## Qué plantilla va en cada sitio

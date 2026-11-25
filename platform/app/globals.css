@@ -681,3 +681,10 @@ footer { background: var(--bg-dark); color: var(--ink-light); padding: 40px 24px
 .setup-title { font-size: 15px; font-weight: 700; margin-top: 22px; }
 .capabilities { margin: 0 0 8px 20px; font-size: 14.5px; line-height: 1.8; color: var(--ink-secondary); }
 .admin-head-actions { margin-top: 12px; }
+
+/* Email code login */
+.otp-input { font-size: 22px !important; letter-spacing: .3em; text-align: center; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.consent-list { margin: -8px 0 14px 18px; font-size: 14px; line-height: 1.7; color: var(--ink-secondary); }
+.upload-card { max-width: 520px; }
+.steps { margin: 0 0 8px 20px; font-size: 14.5px; line-height: 1.8; color: var(--ink-secondary); }
+.advanced-summary { cursor: pointer; font-weight: 700; font-size: 14px; color: var(--ink-secondary); }

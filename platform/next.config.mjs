@@ -8,6 +8,17 @@ const nextConfig = {
       bodySizeLimit: "1mb",
     },
   },
+  async rewrites() {
+    // OAuth discovery for the Claude connector (RFC 8414 / RFC 9728). Some
+    // clients append the resource path, some try OIDC discovery: map all.
+    return [
+      { source: "/.well-known/oauth-authorization-server", destination: "/api/oauth/metadata" },
+      { source: "/.well-known/oauth-authorization-server/:path*", destination: "/api/oauth/metadata" },
+      { source: "/.well-known/openid-configuration", destination: "/api/oauth/metadata" },
+      { source: "/.well-known/oauth-protected-resource", destination: "/api/oauth/protected-resource" },
+      { source: "/.well-known/oauth-protected-resource/:path*", destination: "/api/oauth/protected-resource" },
+    ];
+  },
   async redirects() {
     // URLs of the old static site → platform viewer
     return [
